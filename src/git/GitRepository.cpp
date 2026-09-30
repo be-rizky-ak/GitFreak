@@ -1,6 +1,9 @@
 #include "GitRepository.h"
 
+#include "GitStatusParser.h"
+
 #include <array>
+#include <stdexcept>
 
 GitRepository::GitRepository(
     std::filesystem::path workingDirectory)
@@ -59,4 +62,31 @@ GitCommandResult GitRepository::revParse(
     return m_gitProcess.execute(
         m_workingDirectory,
         arguments);
+}
+
+RepositoryStatus GitRepository::status() const
+{
+    const std::array<std::string, 5> arguments =
+    {
+        "status",
+        "--porcelain=v2",
+        "-z",
+        "--branch",
+        "--untracked-files=all"
+    };
+
+    GitCommandResult result =
+        m_gitProcess.execute(
+            m_workingDirectory,
+            arguments);
+
+    if (result.exitCode != 0)
+    {
+        throw std::runtime_error(
+            "git status failed: " +
+            result.stderrText);
+    }
+
+    return GitStatusParser::parse(
+        result.stdoutText);
 }

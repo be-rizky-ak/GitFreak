@@ -95,6 +95,28 @@ void AppController::openRepository()
                 std::make_unique<GitRepository>(
                     *root);
 
+            RepositoryStatus RepoStatus =
+                m_repository->status();
+
+            std::cout
+                << "Branch: "
+                << RepoStatus.branch
+                << '\n';
+
+            std::cout
+                << "Files: "
+                << RepoStatus.files.size()
+                << '\n';
+
+            for (const ChangedFile& file :
+                 RepoStatus.files)
+            {
+                std::cout
+                    << "  "
+                    << file.path.string()
+                    << '\n';
+            }
+
             m_window->set_repository_path(
                 slint::SharedString(
                     root->string()));

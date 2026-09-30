@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GitProcess.h"
+#include "../models/RepositoryStatus.h"
 
 #include <filesystem>
 #include <optional>
@@ -18,6 +19,8 @@ public:
 
     std::optional<std::filesystem::path>
     findRoot() const;
+
+    RepositoryStatus status() const;
 
     GitCommandResult revParse(
         const std::string& argument) const;
