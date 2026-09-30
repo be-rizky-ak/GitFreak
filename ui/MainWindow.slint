@@ -11,7 +11,11 @@ export component MainWindow inherits Window {
     in property <[string]> changed-files: [];
     in property <[bool]> changed-files-staged: [];
     in property <[bool]> changed-files-unstaged: [];
+    in property <[string]> history-commits: [];
+    in property <[string]> history-details: [];
+
     in property <int> staged-file-count: 0;
+    in property <int> history-count: 0;
 
     callback open-repository();
     callback stage-file(int);
@@ -95,6 +99,7 @@ export component MainWindow inherits Window {
         }
 
         Rectangle {
+            vertical-stretch: 1;
             background: #f5f5f5;
             border-radius: 4px;
             border-width: 1px;
@@ -138,6 +143,56 @@ export component MainWindow inherits Window {
 
                             clicked => {
                                 root.unstage-file(index);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Text {
+            text: "History";
+            font-size: 20px;
+        }
+
+        Rectangle {
+            height: 220px;
+
+            background: #f5f5f5;
+            border-radius: 4px;
+            border-width: 1px;
+            border-color: #d0d0d0;
+
+            ListView {
+                for commit[index] in root.history-commits: Rectangle {
+                    height: 48px;
+
+                    HorizontalLayout {
+                        padding: 6px;
+                        spacing: 10px;
+
+                        Text {
+                            text: commit;
+                            width: 70px;
+                            color: #606060;
+                            vertical-alignment: center;
+                        }
+
+                        VerticalLayout {
+                            horizontal-stretch: 1;
+                            spacing: 2px;
+
+                            Text {
+                                text: root.history-details[index];
+                                font-size: 14px;
+                                color: #252525;
+                                overflow: elide;
+                            }
+
+                            Text {
+                                text: "Commit";
+                                font-size: 11px;
+                                color: #808080;
                             }
                         }
                     }

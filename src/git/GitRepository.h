@@ -1,11 +1,13 @@
 #pragma once
 
 #include "GitProcess.h"
+#include "../models/Commit.h"
 #include "../models/RepositoryStatus.h"
 
 #include <filesystem>
 #include <optional>
 #include <string>
+#include <vector>
 
 class GitRepository
 {
@@ -21,6 +23,9 @@ public:
     findRoot() const;
 
     RepositoryStatus status() const;
+
+    std::vector<Commit> history(
+        int limit = 100) const;
     
     void stage(
         const std::filesystem::path& path) const;

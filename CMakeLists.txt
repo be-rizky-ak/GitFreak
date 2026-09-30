@@ -19,6 +19,8 @@ add_executable(GitFreak
     src/application/Application.h
     src/application/AppController.h
 
+    src/git/GitHistoryParser.cpp
+    src/git/GitHistoryParser.h
     src/git/GitProcess.cpp
     src/git/GitProcess.h
     src/git/GitRepository.cpp
@@ -26,6 +28,7 @@ add_executable(GitFreak
     src/git/GitStatusParser.cpp
     src/git/GitStatusParser.h
     
+    src/models/Commit.h
     src/models/RepositoryStatus.h
 
     src/tasks/TaskScheduler.cpp

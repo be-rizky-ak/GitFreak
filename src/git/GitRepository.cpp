@@ -1,5 +1,6 @@
 #include "GitRepository.h"
 
+#include "GitHistoryParser.h"
 #include "GitStatusParser.h"
 
 #include <array>
@@ -159,4 +160,43 @@ void GitRepository::commit(
             "git commit failed: " +
             result.stderrText);
     }
+}
+
+std::vector<Commit> GitRepository::history(
+    int limit) const
+{
+    if (limit <= 0)
+    {
+        return {};
+    }
+
+    const std::string limitArgument =
+        "-" + std::to_string(limit);
+
+    const std::string format =
+        "--pretty=format:%H%x00%P%x00%an%x00%ae%x00%ad%x00%s%x00";
+
+    const std::array<std::string, 5> arguments =
+    {
+        "log",
+        "HEAD",
+        limitArgument,
+        "--date=iso-strict",
+        format
+    };
+
+    GitCommandResult result =
+        m_gitProcess.execute(
+            m_workingDirectory,
+            arguments);
+
+    if (result.exitCode != 0)
+    {
+        throw std::runtime_error(
+            "git log failed: " +
+            result.stderrText);
+    }
+
+    return GitHistoryParser::parse(
+        result.stdoutText);
 }

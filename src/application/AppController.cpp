@@ -6,6 +6,7 @@
 
 #include <slint.h>
 
+#include <algorithm>
 #include <chrono>
 #include <exception>
 #include <memory>
@@ -320,6 +321,8 @@ void AppController::pollStatus()
                 slint::SharedString(
                     "Branch: " + status.branch));
         }
+
+        startHistoryRefresh();
     }
     catch (const std::exception& e)
     {
@@ -571,6 +574,117 @@ void AppController::pollCommit()
         m_window->set_status_text(
             slint::SharedString(
                 std::string("Commit failed: ") +
+                e.what()));
+    }
+}
+
+void AppController::startHistoryRefresh()
+{
+    if (!m_repository)
+    {
+        return;
+    }
+
+    const std::filesystem::path repositoryPath =
+        m_repository->workingDirectory();
+
+    m_historyTask =
+        m_scheduler.submit(
+            [repositoryPath]()
+            {
+                GitRepository repository(
+                    repositoryPath);
+
+                return repository.history(100);
+            });
+
+    m_repositoryTimer.stop();
+
+    m_repositoryTimer.start(
+        slint::TimerMode::Repeated,
+        std::chrono::milliseconds(50),
+        [this]()
+        {
+            pollHistory();
+        });
+}
+
+void AppController::pollHistory()
+{
+    if (!m_historyTask.valid())
+    {
+        m_repositoryTimer.stop();
+        return;
+    }
+
+    if (m_historyTask.wait_for(
+            std::chrono::milliseconds(0)) !=
+        std::future_status::ready)
+    {
+        return;
+    }
+
+    m_repositoryTimer.stop();
+
+    try
+    {
+        std::vector<Commit> commits =
+            m_historyTask.get();
+
+        std::vector<slint::SharedString>
+            commitHashes;
+
+        std::vector<slint::SharedString>
+            commitDetails;
+
+        commitHashes.reserve(
+            commits.size());
+
+        commitDetails.reserve(
+            commits.size());
+
+        for (const Commit& commit :
+             commits)
+        {
+            std::string shortHash =
+                commit.hash.substr(
+                    0,
+                    std::min<std::size_t>(
+                        7,
+                        commit.hash.size()));
+
+            commitHashes.emplace_back(
+                shortHash);
+
+            commitDetails.emplace_back(
+                commit.subject +
+                "  —  " +
+                commit.author +
+                "  " +
+                commit.date);
+        }
+
+        m_window->set_history_commits(
+            std::make_shared<
+                slint::VectorModel<
+                    slint::SharedString>>(
+                std::move(commitHashes)));
+
+        m_window->set_history_details(
+            std::make_shared<
+                slint::VectorModel<
+                    slint::SharedString>>(
+                std::move(commitDetails)));
+
+        m_window->set_history_count(
+            static_cast<int>(
+                commits.size()));
+    }
+    catch (const std::exception& e)
+    {
+        m_window->set_status_text(
+            slint::SharedString(
+                std::string("Failed to load history: ") +
                 e.what()));
     }
 }

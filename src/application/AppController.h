@@ -3,6 +3,7 @@
 #include "MainWindow.h"
 
 #include "../models/RepositoryStatus.h"
+#include "../models/Commit.h"
 
 #include <filesystem>
 #include <future>
@@ -41,6 +42,8 @@ private:
     void commit(
         const std::string& message);
     void pollCommit();
+    void startHistoryRefresh();
+    void pollHistory();
 
     slint::ComponentHandle<MainWindow> m_window;
 
@@ -57,4 +60,5 @@ private:
     slint::Timer m_repositoryTimer;
     std::vector<std::filesystem::path> m_fileOrder;
     std::future<void> m_commitTask;
+    std::future<std::vector<Commit>> m_historyTask;
 };
