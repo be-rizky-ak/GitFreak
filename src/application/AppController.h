@@ -8,6 +8,7 @@
 #include <future>
 #include <memory>
 #include <optional>
+#include <string>
 #include <vector>
 
 class GitRepository;
@@ -37,6 +38,9 @@ private:
         bool stage);
     void pollFileOperation();
     void startStatusRefresh();
+    void commit(
+        const std::string& message);
+    void pollCommit();
 
     slint::ComponentHandle<MainWindow> m_window;
 
@@ -52,4 +56,5 @@ private:
     std::future<void> m_fileOperationTask;
     slint::Timer m_repositoryTimer;
     std::vector<std::filesystem::path> m_fileOrder;
+    std::future<void> m_commitTask;
 };

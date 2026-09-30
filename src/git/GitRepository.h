@@ -28,6 +28,9 @@ public:
     void unstage(
         const std::filesystem::path& path) const;
 
+    void commit(
+        const std::string& message) const;
+
     GitCommandResult revParse(
         const std::string& argument) const;
 

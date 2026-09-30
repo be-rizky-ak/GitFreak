@@ -45,6 +45,13 @@ void AppController::connectSignals()
         {
             unstageFile(index);
         });
+
+    m_window->on_commit(
+        [this](const slint::SharedString& message)
+        {
+            commit(
+                std::string(message));
+        });
 }
 
 
@@ -63,6 +70,7 @@ void AppController::openRepository()
     m_fileOrder.clear();
 
     m_window->set_changed_files({});
+    m_window->set_staged_file_count(0);
     m_window->set_status_text(
         "Opening repository...");
 
@@ -230,6 +238,8 @@ void AppController::pollStatus()
         staged.reserve(status.files.size());
         unstaged.reserve(status.files.size());
 
+        int stagedFileCount = 0;
+
         for (const ChangedFile& file :
              status.files)
         {
@@ -274,6 +284,11 @@ void AppController::pollStatus()
 
             unstaged.push_back(
                 file.unstaged);
+            
+            if (file.staged)
+            {
+                ++stagedFileCount;
+            }
         }
 
         m_window->set_changed_files(
@@ -290,6 +305,9 @@ void AppController::pollStatus()
             std::make_shared<
                 slint::VectorModel<bool>>(
                     std::move(unstaged)));
+
+        m_window->set_staged_file_count(
+            stagedFileCount);
 
         if (status.branch.empty())
         {
@@ -458,4 +476,101 @@ void AppController::startStatusRefresh()
         {
             pollStatus();
         });
+}
+
+void AppController::commit(
+    const std::string& message)
+{
+    if (!m_repository)
+    {
+        return;
+    }
+
+    if (message.empty())
+    {
+        return;
+    }
+
+    if (m_repositoryStatus.files.empty())
+    {
+        return;
+    }
+
+    int stagedFileCount = 0;
+
+    for (const ChangedFile& file :
+         m_repositoryStatus.files)
+    {
+        if (file.staged)
+        {
+            ++stagedFileCount;
+        }
+    }
+
+    if (stagedFileCount == 0)
+    {
+        return;
+    }
+
+    const std::filesystem::path repositoryPath =
+        m_repository->workingDirectory();
+
+    m_window->set_status_text(
+        "Committing...");
+
+    m_commitTask =
+        m_scheduler.submit(
+            [repositoryPath, message]()
+            {
+                GitRepository repository(
+                    repositoryPath);
+
+                repository.commit(
+                    message);
+            });
+
+    m_repositoryTimer.stop();
+
+    m_repositoryTimer.start(
+        slint::TimerMode::Repeated,
+        std::chrono::milliseconds(50),
+        [this]()
+        {
+            pollCommit();
+        });
+}
+
+void AppController::pollCommit()
+{
+    if (!m_commitTask.valid())
+    {
+        m_repositoryTimer.stop();
+        return;
+    }
+
+    if (m_commitTask.wait_for(
+            std::chrono::milliseconds(0)) !=
+        std::future_status::ready)
+    {
+        return;
+    }
+
+    m_repositoryTimer.stop();
+
+    try
+    {
+        m_commitTask.get();
+
+        m_window->set_status_text(
+            "Commit created.");
+
+        startStatusRefresh();
+    }
+    catch (const std::exception& e)
+    {
+        m_window->set_status_text(
+            slint::SharedString(
+                std::string("Commit failed: ") +
+                e.what()));
+    }
 }

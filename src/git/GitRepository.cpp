@@ -137,3 +137,26 @@ void GitRepository::unstage(
             result.stderrText);
     }
 }
+
+void GitRepository::commit(
+    const std::string& message) const
+{
+    const std::array<std::string, 3> arguments =
+    {
+        "commit",
+        "-m",
+        message
+    };
+
+    GitCommandResult result =
+        m_gitProcess.execute(
+            m_workingDirectory,
+            arguments);
+
+    if (result.exitCode != 0)
+    {
+        throw std::runtime_error(
+            "git commit failed: " +
+            result.stderrText);
+    }
+}
