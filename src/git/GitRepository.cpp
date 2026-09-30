@@ -90,3 +90,50 @@ RepositoryStatus GitRepository::status() const
     return GitStatusParser::parse(
         result.stdoutText);
 }
+
+void GitRepository::stage(
+    const std::filesystem::path& path) const
+{
+    const std::array<std::string, 3> arguments =
+    {
+        "add",
+        "--",
+        path.string()
+    };
+
+    GitCommandResult result =
+        m_gitProcess.execute(
+            m_workingDirectory,
+            arguments);
+
+    if (result.exitCode != 0)
+    {
+        throw std::runtime_error(
+            "git add failed: " +
+            result.stderrText);
+    }
+}
+
+void GitRepository::unstage(
+    const std::filesystem::path& path) const
+{
+    const std::array<std::string, 4> arguments =
+    {
+        "restore",
+        "--staged",
+        "--",
+        path.string()
+    };
+
+    GitCommandResult result =
+        m_gitProcess.execute(
+            m_workingDirectory,
+            arguments);
+
+    if (result.exitCode != 0)
+    {
+        throw std::runtime_error(
+            "git restore --staged failed: " +
+            result.stderrText);
+    }
+}

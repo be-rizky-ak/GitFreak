@@ -21,6 +21,12 @@ public:
     findRoot() const;
 
     RepositoryStatus status() const;
+    
+    void stage(
+        const std::filesystem::path& path) const;
+
+    void unstage(
+        const std::filesystem::path& path) const;
 
     GitCommandResult revParse(
         const std::string& argument) const;

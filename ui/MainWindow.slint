@@ -1,4 +1,4 @@
-import { Button } from "std-widgets.slint";
+import { Button, ListView } from "std-widgets.slint";
 
 export component MainWindow inherits Window {
     title: "GitFreak";
@@ -8,41 +8,125 @@ export component MainWindow inherits Window {
 
     in property <string> repository-path: "";
     in property <string> status-text: "No repository opened.";
+    in property <[string]> changed-files: [];
+    in property <[bool]> changed-files-staged: [];
+    in property <[bool]> changed-files-unstaged: [];
 
     callback open-repository();
+    callback stage-file(int);
+    callback unstage-file(int);
 
     VerticalLayout {
-        alignment: center;
-        spacing: 20px;
+        padding: 20px;
+        spacing: 12px;
 
-        Text {
-            text: "GitFreak";
-            font-size: 36px;
-            horizontal-alignment: center;
-        }
+        HorizontalLayout {
+            alignment: start;
+            spacing: 12px;
 
-        Text {
-            text: "Your Git, your way.";
-            font-size: 18px;
-            horizontal-alignment: center;
-        }
+            Text {
+                text: "GitFreak";
+                font-size: 28px;
+                vertical-alignment: center;
+            }
 
-        Button {
-            text: "Open Repository";
+            Button {
+                text: "Open Repository";
 
-            clicked => {
-                root.open-repository();
+                clicked => {
+                    root.open-repository();
+                }
             }
         }
 
         Text {
-            text: status-text;
-            horizontal-alignment: center;
+            text: root.repository-path;
+            font-size: 13px;
+            color: #808080;
+        }
+
+        Rectangle {
+            height: 1px;
+            background: #d0d0d0;
         }
 
         Text {
-            text: repository-path;
-            horizontal-alignment: center;
+            text: "Changes";
+            font-size: 20px;
+        }
+
+        Text {
+            text: root.status-text;
+            color: #808080;
+        }
+
+        Rectangle {
+            background: #f5f5f5;
+            border-radius: 4px;
+            border-width: 1px;
+            border-color: #d0d0d0;
+
+            ListView {
+                for file[index] in root.changed-files: Rectangle {
+                    height: 36px;
+
+                    HorizontalLayout {
+                        spacing: 8px;
+                        padding: 4px;
+
+                        Text {
+                            text: file;
+                            font-size: 14px;
+                            color: #252525;
+                            vertical-alignment: center;
+                            overflow: elide;
+
+                            horizontal-stretch: 1;
+                        }
+
+                        Button {
+                            text: "Stage";
+                            width: 80px;
+
+                            visible: !root.changed-files-staged[index] ||
+                                     root.changed-files-unstaged[index];
+
+                            clicked => {
+                                root.stage-file(index);
+                            }
+                        }
+
+                        Button {
+                            text: "Unstage";
+                            width: 80px;
+
+                            visible: root.changed-files-staged[index];
+
+                            clicked => {
+                                root.unstage-file(index);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        HorizontalLayout {
+            spacing: 12px;
+
+            Text {
+                text: "Files: " + root.changed-files.length;
+                color: #808080;
+            }
+
+            Rectangle {
+                background: transparent;
+            }
+
+            Text {
+                text: "GitFreak";
+                color: #808080;
+            }
         }
     }
 }
