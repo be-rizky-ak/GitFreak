@@ -1,10 +1,9 @@
-#include "MainWindow.h"
+#include "application/Application.h"
 
 int main()
 {
-    auto window = MainWindow::create();
+    Application application;
 
-    window->run();
-
+    application.run();
     return 0;
 }

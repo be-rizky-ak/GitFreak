@@ -13,6 +13,17 @@ find_package(Slint REQUIRED)
 
 add_executable(GitFreak
     src/main.cpp
+
+    src/application/Application.cpp
+    src/application/AppController.cpp
+    src/application/Application.h
+    src/application/AppController.h
+
+    src/git/GitProcess.cpp
+    src/git/GitProcess.h
+
+    src/tasks/TaskScheduler.cpp
+    src/tasks/TaskScheduler.h
 )
 
 slint_target_sources(GitFreak

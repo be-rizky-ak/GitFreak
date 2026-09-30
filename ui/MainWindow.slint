@@ -6,6 +6,8 @@ export component MainWindow inherits Window {
     width: 1000px;
     height: 700px;
 
+    callback open-repository();
+
     VerticalLayout {
         alignment: center;
 
@@ -25,7 +27,7 @@ export component MainWindow inherits Window {
             text: "Open Repository";
 
             clicked => {
-                // Git repository opening will come later.
+                root.open-repository();
             }
         }
     }
