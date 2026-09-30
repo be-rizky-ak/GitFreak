@@ -1,0 +1,32 @@
+import { Button } from "std-widgets.slint";
+
+export component MainWindow inherits Window {
+    title: "GitFreak";
+
+    width: 1000px;
+    height: 700px;
+
+    VerticalLayout {
+        alignment: center;
+
+        Text {
+            text: "GitFreak";
+            font-size: 36px;
+            horizontal-alignment: center;
+        }
+
+        Text {
+            text: "Your Git, your way.";
+            font-size: 18px;
+            horizontal-alignment: center;
+        }
+
+        Button {
+            text: "Open Repository";
+
+            clicked => {
+                // Git repository opening will come later.
+            }
+        }
+    }
+}
