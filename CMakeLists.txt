@@ -21,9 +21,14 @@ add_executable(GitFreak
 
     src/git/GitProcess.cpp
     src/git/GitProcess.h
+    src/git/GitRepository.cpp
+    src/git/GitRepository.h
 
     src/tasks/TaskScheduler.cpp
     src/tasks/TaskScheduler.h
+
+    src/platform/NativeDialogs.cpp
+    src/platform/NativeDialogs.h
 )
 
 slint_target_sources(GitFreak
