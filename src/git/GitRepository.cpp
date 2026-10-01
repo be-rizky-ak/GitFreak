@@ -5,6 +5,8 @@
 
 #include <array>
 #include <stdexcept>
+#include <utility>
+#include <vector>
 
 GitRepository::GitRepository(
     std::filesystem::path workingDirectory)
@@ -199,4 +201,39 @@ std::vector<Commit> GitRepository::history(
 
     return GitHistoryParser::parse(
         result.stdoutText);
+}
+
+Diff GitRepository::diff(
+    const std::filesystem::path& path,
+    bool staged) const
+{
+    std::vector<std::string> arguments;
+
+    arguments.push_back("diff");
+
+    if (staged)
+    {
+        arguments.push_back("--cached");
+    }
+
+    arguments.push_back("--");
+    arguments.push_back(path.string());
+
+    GitCommandResult result =
+        m_gitProcess.execute(
+            m_workingDirectory,
+            arguments);
+
+    if (result.exitCode != 0)
+    {
+        throw std::runtime_error(
+            "git diff failed: " +
+            result.stderrText);
+    }
+
+    Diff diff;
+
+    diff.text = std::move(result.stdoutText);
+
+    return diff;
 }

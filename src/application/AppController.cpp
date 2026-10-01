@@ -13,6 +13,82 @@
 #include <string>
 #include <vector>
 
+namespace
+{
+
+std::vector<std::string> splitDiffLines(
+    const std::string& text)
+{
+    std::vector<std::string> lines;
+
+    std::size_t start = 0;
+
+    while (start < text.size())
+    {
+        std::size_t end =
+            text.find('\n', start);
+
+        if (end == std::string::npos)
+        {
+            end = text.size();
+        }
+
+        std::string line =
+            text.substr(start, end - start);
+
+        if (!line.empty() &&
+            line.back() == '\r')
+        {
+            line.pop_back();
+        }
+
+        lines.push_back(
+            std::move(line));
+
+        if (end == text.size())
+        {
+            break;
+        }
+
+        start = end + 1;
+    }
+
+    return lines;
+}
+
+int getDiffLineType(
+    const std::string& line)
+{
+    if (line.rfind("diff --git", 0) == 0 ||
+        line.rfind("index ", 0) == 0 ||
+        line.rfind("--- ", 0) == 0 ||
+        line.rfind("+++ ", 0) == 0)
+    {
+        return 3;
+    }
+
+    if (line.rfind("@@", 0) == 0)
+    {
+        return 4;
+    }
+
+    if (!line.empty() &&
+        line[0] == '+')
+    {
+        return 1;
+    }
+
+    if (!line.empty() &&
+        line[0] == '-')
+    {
+        return 2;
+    }
+
+    return 0;
+}
+
+}
+
 AppController::AppController(
     const slint::ComponentHandle<MainWindow>& window,
     TaskScheduler& scheduler)
@@ -52,6 +128,12 @@ void AppController::connectSignals()
         {
             commit(
                 std::string(message));
+        });
+
+    m_window->on_select_file(
+        [this](int index)
+        {
+            selectFile(index);
         });
 }
 
@@ -686,5 +768,141 @@ void AppController::pollHistory()
             slint::SharedString(
                 std::string("Failed to load history: ") +
                 e.what()));
+    }
+}
+
+void AppController::selectFile(int index)
+{
+    if (!m_repository)
+    {
+        return;
+    }
+
+    if (index < 0 ||
+        index >= static_cast<int>(
+            m_repositoryStatus.files.size()))
+    {
+        return;
+    }
+
+    const ChangedFile& file =
+        m_repositoryStatus.files[index];
+
+    startDiffRefresh(
+        file.path,
+        file.staged);
+}
+
+void AppController::startDiffRefresh(
+    const std::filesystem::path& path,
+    bool staged)
+{
+    if (!m_repository)
+    {
+        return;
+    }
+
+    const std::filesystem::path repositoryPath =
+        m_repository->workingDirectory();
+
+    m_diffTask =
+        m_scheduler.submit(
+            [repositoryPath, path, staged]()
+            {
+                GitRepository repository(
+                    repositoryPath);
+
+                return repository.diff(
+                    path,
+                    staged);
+            });
+
+    m_repositoryTimer.stop();
+
+    m_repositoryTimer.start(
+        slint::TimerMode::Repeated,
+        std::chrono::milliseconds(50),
+        [this]()
+        {
+            pollDiff();
+        });
+}
+
+void AppController::pollDiff()
+{
+    if (!m_diffTask.valid())
+    {
+        m_repositoryTimer.stop();
+        return;
+    }
+
+    if (m_diffTask.wait_for(
+            std::chrono::milliseconds(0)) !=
+        std::future_status::ready)
+    {
+        return;
+    }
+
+    m_repositoryTimer.stop();
+
+    try
+    {
+        Diff diff =
+            m_diffTask.get();
+
+        std::vector<std::string> lines =
+            splitDiffLines(diff.text);
+
+        std::vector<slint::SharedString>
+            diffLines;
+
+        std::vector<int>
+            diffLineTypes;
+
+        diffLines.reserve(lines.size());
+        diffLineTypes.reserve(lines.size());
+
+        for (const std::string& line : lines)
+        {
+            diffLines.emplace_back(line);
+            diffLineTypes.push_back(
+                getDiffLineType(line));
+        }
+
+        m_window->set_diff_lines(
+            std::make_shared<
+                slint::VectorModel<
+                    slint::SharedString>>(
+                std::move(diffLines)));
+
+        m_window->set_diff_line_types(
+            std::make_shared<
+                slint::VectorModel<int>>(
+                std::move(diffLineTypes)));
+    }
+    catch (const std::exception& e)
+    {
+        std::vector<slint::SharedString>
+            errorLines;
+
+        std::vector<int>
+            errorTypes;
+
+        errorLines.emplace_back(
+            std::string("Failed to load diff: ") +
+            e.what());
+
+        errorTypes.push_back(2);
+
+        m_window->set_diff_lines(
+            std::make_shared<
+                slint::VectorModel<
+                    slint::SharedString>>(
+                std::move(errorLines)));
+
+        m_window->set_diff_line_types(
+            std::make_shared<
+                slint::VectorModel<int>>(
+                std::move(errorTypes)));
     }
 }

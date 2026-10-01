@@ -2,6 +2,7 @@
 
 #include "GitProcess.h"
 #include "../models/Commit.h"
+#include "../models/Diff.h"
 #include "../models/RepositoryStatus.h"
 
 #include <filesystem>
@@ -35,6 +36,10 @@ public:
 
     void commit(
         const std::string& message) const;
+    
+    Diff diff(
+        const std::filesystem::path& path,
+        bool staged) const;
 
     GitCommandResult revParse(
         const std::string& argument) const;

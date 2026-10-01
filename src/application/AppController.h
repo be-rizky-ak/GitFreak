@@ -2,8 +2,9 @@
 
 #include "MainWindow.h"
 
-#include "../models/RepositoryStatus.h"
 #include "../models/Commit.h"
+#include "../models/Diff.h"
+#include "../models/RepositoryStatus.h"
 
 #include <filesystem>
 #include <future>
@@ -44,6 +45,11 @@ private:
     void pollCommit();
     void startHistoryRefresh();
     void pollHistory();
+    void selectFile(int index);
+    void startDiffRefresh(
+        const std::filesystem::path& path,
+        bool staged);
+    void pollDiff();
 
     slint::ComponentHandle<MainWindow> m_window;
 
@@ -61,4 +67,5 @@ private:
     std::vector<std::filesystem::path> m_fileOrder;
     std::future<void> m_commitTask;
     std::future<std::vector<Commit>> m_historyTask;
+    std::future<Diff> m_diffTask;
 };

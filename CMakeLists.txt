@@ -29,6 +29,7 @@ add_executable(GitFreak
     src/git/GitStatusParser.h
     
     src/models/Commit.h
+    src/models/Diff.h
     src/models/RepositoryStatus.h
 
     src/tasks/TaskScheduler.cpp

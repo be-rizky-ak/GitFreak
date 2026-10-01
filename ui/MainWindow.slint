@@ -3,16 +3,19 @@ import { Button, LineEdit, ListView } from "std-widgets.slint";
 export component MainWindow inherits Window {
     title: "GitFreak";
 
-    width: 1000px;
-    height: 700px;
+    width: 1200px;
+    height: 850px;
 
     in property <string> repository-path: "";
     in property <string> status-text: "No repository opened.";
+    in property <string> diff-text: "Select a file to view its diff.";
     in property <[string]> changed-files: [];
     in property <[bool]> changed-files-staged: [];
     in property <[bool]> changed-files-unstaged: [];
     in property <[string]> history-commits: [];
     in property <[string]> history-details: [];
+    in property <[string]> diff-lines: [];
+    in property <[int]> diff-line-types: [];
 
     in property <int> staged-file-count: 0;
     in property <int> history-count: 0;
@@ -21,6 +24,7 @@ export component MainWindow inherits Window {
     callback stage-file(int);
     callback unstage-file(int);
     callback commit(string);
+    callback select-file(int);
 
     VerticalLayout {
         padding: 20px;
@@ -56,99 +60,211 @@ export component MainWindow inherits Window {
             background: #d0d0d0;
         }
 
-        Text {
-            text: "Changes";
-            font-size: 20px;
-        }
+        HorizontalLayout {
+            vertical-stretch: 1;
+            spacing: 12px;
 
-        Text {
-            text: root.status-text;
-            color: #808080;
-        }
+            VerticalLayout {
+                horizontal-stretch: 1;
+                spacing: 12px;
 
-        Rectangle {
-            height: 52px;
-            background: #f5f5f5;
-            border-radius: 4px;
-            border-width: 1px;
-            border-color: #d0d0d0;
+                // Changes Container
+                Rectangle {
+                    vertical-stretch: 1;
+                    background: #f5f5f5;
+                    border-radius: 4px;
+                    border-width: 1px;
+                    border-color: #d0d0d0;
 
-            HorizontalLayout {
-                padding: 8px;
-                spacing: 8px;
-                
-                commit_message := LineEdit {
-                    placeholder-text: "Commit message...";
-                    horizontal-stretch: 1;
-                }
+                    VerticalLayout {
+                        padding: 8px;
+                        spacing: 8px;
 
-                Button {
-                    text: "Commit";
+                        Text {
+                            text: "Changes";
+                            font-size: 20px;
+                        }
 
-                    enabled: root.staged-file-count > 0 &&
-                             commit_message.text != "";
+                        Text {
+                            text: root.status-text;
+                            color: #808080;
+                        }
 
-                    clicked => {
-                        root.commit(
-                            commit_message.text);
+                        // 3. Scrollable Changes ListView
 
-                        commit_message.text = "";
+                ListView {
+                    vertical-stretch: 1;
+
+                    for file[index] in root.changed-files: Rectangle {
+                        height: 36px;
+
+                        TouchArea {
+                            x: 0px;
+                            width: 500px;
+                            height: parent.height;
+
+                            clicked => {
+                                root.select-file(index);
+                            }
+                        }
+
+                        HorizontalLayout {
+                            spacing: 8px;
+                            padding: 4px;
+
+                            Text {
+                                text: file;
+                                font-size: 14px;
+                                color: #252525;
+                                vertical-alignment: center;
+                                overflow: elide;
+
+                                horizontal-stretch: 1;
+                            }
+
+                            Button {
+                                text: "Stage";
+                                width: 80px;
+
+                                visible: !root.changed-files-staged[index] ||
+                                         root.changed-files-unstaged[index];
+
+                                clicked => {
+                                    root.stage-file(index);
+                                }
+                            }
+
+                            Button {
+                                text: "Unstage";
+                                width: 80px;
+
+                                visible: root.changed-files-staged[index];
+
+                                clicked => {
+                                    root.unstage-file(index);
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
 
-        Rectangle {
-            vertical-stretch: 1;
-            background: #f5f5f5;
-            border-radius: 4px;
-            border-width: 1px;
-            border-color: #d0d0d0;
-
-            ListView {
-                for file[index] in root.changed-files: Rectangle {
-                    height: 36px;
+                Rectangle {
+                    height: 52px;
+                    background: #ffffff;
+                    border-radius: 4px;
+                    border-width: 1px;
+                    border-color: #d0d0d0;
 
                     HorizontalLayout {
+                        padding: 8px;
                         spacing: 8px;
-                        padding: 4px;
 
-                        Text {
-                            text: file;
-                            font-size: 14px;
-                            color: #252525;
-                            vertical-alignment: center;
-                            overflow: elide;
-
+                        commit_message := LineEdit {
+                            placeholder-text: "Commit message...";
                             horizontal-stretch: 1;
                         }
 
                         Button {
-                            text: "Stage";
-                            width: 80px;
+                            text: "Commit";
 
-                            visible: !root.changed-files-staged[index] ||
-                                     root.changed-files-unstaged[index];
+                            enabled: root.staged-file-count > 0 &&
+                                     commit_message.text != "";
 
                             clicked => {
-                                root.stage-file(index);
+                                root.commit(commit_message.text);
+                                commit_message.text = "";
                             }
                         }
+                    }
+                }
+            }
 
-                        Button {
-                            text: "Unstage";
-                            width: 80px;
+        // RIGHT: Diff
+        Rectangle {
+            horizontal-stretch: 2;
+            background: #ffffff;
+            border-radius: 4px;
+            border-width: 1px;
+            border-color: #d0d0d0;
 
-                            visible: root.changed-files-staged[index];
+            VerticalLayout {
+                padding: 8px;
+                    spacing: 8px;
 
-                            clicked => {
-                                root.unstage-file(index);
+                Text {
+                    text: "Diff";
+                    font-size: 20px;
+                }
+
+                Flickable {
+                    vertical-stretch: 1;
+
+                    content-width: self.width;
+                    content-height: root.diff-lines.length * 20px;
+
+                    VerticalLayout {
+                        width: parent.width;
+
+                        for line[index] in root.diff-lines : Rectangle {
+                            height: 20px;
+
+                            background: {
+                                if (root.diff-line-types[index] == 1) {
+                                    return #e8f5e9;
+                                }
+
+                                if (root.diff-line-types[index] == 2) {
+                                    return #ffebee;
+                                }
+
+                                if (root.diff-line-types[index] == 3) {
+                                    return #f5f5f5;
+                                }
+
+                                if (root.diff-line-types[index] == 4) {
+                                    return #e3f2fd;
+                                }
+
+                                return transparent;
+                            }
+
+                            Text {
+                                text: line;
+                                x: 8px;
+                                y: 0px;
+                                width: parent.width - 16px;
+                                height: parent.height;
+
+                                font-size: 13px;
+                                font-family: "Consolas";
+
+                                color: {
+                                    if (root.diff-line-types[index] == 1) {
+                                        return #2e7d32;
+                                    }
+
+                                    if (root.diff-line-types[index] == 2) {
+                                        return #c62828;
+                                    }
+
+                                    if (root.diff-line-types[index] == 4) {
+                                        return #1565c0;
+                                    }
+
+                                    return #252525;
+                                }
+
+                                vertical-alignment: center;
+                                overflow: elide;
                             }
                         }
                     }
                 }
             }
         }
+    }
 
         Text {
             text: "History";
@@ -156,7 +272,7 @@ export component MainWindow inherits Window {
         }
 
         Rectangle {
-            height: 220px;
+            height: 180px;
 
             background: #f5f5f5;
             border-radius: 4px;
