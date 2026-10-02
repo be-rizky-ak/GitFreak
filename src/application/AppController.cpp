@@ -405,6 +405,8 @@ void AppController::pollStatus()
         }
 
         startHistoryRefresh();
+
+        startBranchRefresh();
     }
     catch (const std::exception& e)
     {
@@ -904,5 +906,203 @@ void AppController::pollDiff()
             std::make_shared<
                 slint::VectorModel<int>>(
                 std::move(errorTypes)));
+    }
+}
+
+void AppController::startBranchRefresh()
+{
+    if (!m_repository)
+    {
+        return;
+    }
+
+    const std::filesystem::path repositoryPath =
+        m_repository->workingDirectory();
+
+    m_branchTask =
+        m_scheduler.submit(
+            [repositoryPath]()
+            {
+                GitRepository repository(
+                    repositoryPath);
+
+                return repository.branches();
+            });
+
+    m_repositoryTimer.stop();
+
+    m_repositoryTimer.start(
+        slint::TimerMode::Repeated,
+        std::chrono::milliseconds(50),
+        [this]()
+        {
+            pollBranches();
+        });
+}
+
+void AppController::pollBranches()
+{
+    if (!m_branchTask.valid())
+    {
+        m_repositoryTimer.stop();
+        return;
+    }
+
+    if (m_branchTask.wait_for(
+            std::chrono::milliseconds(0)) !=
+        std::future_status::ready)
+    {
+        return;
+    }
+
+    m_repositoryTimer.stop();
+
+    try
+    {
+        std::vector<Branch> branches =
+            m_branchTask.get();
+
+        std::vector<slint::SharedString>
+            branchNames;
+
+        std::vector<bool>
+            branchCurrent;
+
+        branchNames.reserve(
+            branches.size());
+
+        branchCurrent.reserve(
+            branches.size());
+
+        for (const Branch& branch :
+             branches)
+        {
+            branchNames.emplace_back(
+                branch.name);
+
+            branchCurrent.push_back(
+                branch.current);
+        }
+
+        m_branches = branches;
+
+        m_window->set_branch_names(
+            std::make_shared<
+                slint::VectorModel<
+                    slint::SharedString>>(
+                std::move(branchNames)));
+
+        m_window->set_branch_current(
+            std::make_shared<
+                slint::VectorModel<bool>>(
+                std::move(branchCurrent)));
+    }
+    catch (const std::exception& e)
+    {
+        m_window->set_status_text(
+            slint::SharedString(
+                std::string(
+                    "Failed to load branches: ") +
+                e.what()));
+    }
+}
+
+void AppController::checkoutBranch(int index)
+{
+    if (!m_repository)
+    {
+        return;
+    }
+
+    if (index < 0 ||
+        index >= static_cast<int>(
+            m_branches.size()))
+    {
+        return;
+    }
+
+    const std::string branchName =
+        m_branches[index].name;
+
+    if (m_branches[index].current)
+    {
+        return;
+    }
+
+    startCheckout(branchName);
+}
+
+void AppController::startCheckout(
+    const std::string& branchName)
+{
+    if (!m_repository)
+    {
+        return;
+    }
+
+    const std::filesystem::path repositoryPath =
+        m_repository->workingDirectory();
+
+    m_checkoutTask =
+        m_scheduler.submit(
+            [repositoryPath, branchName]()
+            {
+                GitRepository repository(
+                    repositoryPath);
+
+                repository.checkout(
+                    branchName);
+            });
+
+    m_repositoryTimer.stop();
+
+    m_repositoryTimer.start(
+        slint::TimerMode::Repeated,
+        std::chrono::milliseconds(50),
+        [this]()
+        {
+            pollCheckout();
+        });
+}
+
+void AppController::pollCheckout()
+{
+    if (!m_checkoutTask.valid())
+    {
+        m_repositoryTimer.stop();
+        return;
+    }
+
+    if (m_checkoutTask.wait_for(
+            std::chrono::milliseconds(0)) !=
+        std::future_status::ready)
+    {
+        return;
+    }
+
+    m_repositoryTimer.stop();
+
+    try
+    {
+        m_checkoutTask.get();
+
+        m_window->set_diff_lines(
+            std::make_shared<
+                slint::VectorModel<
+                    slint::SharedString>>());
+
+        m_window->set_diff_line_types(
+            std::make_shared<
+                slint::VectorModel<int>>());
+
+        startStatusRefresh();
+    }
+    catch (const std::exception& e)
+    {
+        m_window->set_status_text(
+            slint::SharedString(
+                std::string(
+                    "Failed to switch branch: ") +
+                e.what()));
     }
 }

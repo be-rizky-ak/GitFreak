@@ -2,6 +2,7 @@
 
 #include "MainWindow.h"
 
+#include "../models/Branch.h"
 #include "../models/Commit.h"
 #include "../models/Diff.h"
 #include "../models/RepositoryStatus.h"
@@ -50,6 +51,13 @@ private:
         const std::filesystem::path& path,
         bool staged);
     void pollDiff();
+    void startBranchRefresh();
+    void pollBranches();
+
+    void checkoutBranch(int index);
+    void startCheckout(
+        const std::string& branchName);
+    void pollCheckout();
 
     slint::ComponentHandle<MainWindow> m_window;
 
@@ -68,4 +76,7 @@ private:
     std::future<void> m_commitTask;
     std::future<std::vector<Commit>> m_historyTask;
     std::future<Diff> m_diffTask;
+    std::future<std::vector<Branch>> m_branchTask;
+    std::future<void> m_checkoutTask;
+    std::vector<Branch> m_branches;
 };

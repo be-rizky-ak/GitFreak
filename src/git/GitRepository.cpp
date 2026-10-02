@@ -237,3 +237,154 @@ Diff GitRepository::diff(
 
     return diff;
 }
+
+std::vector<Branch> GitRepository::branches() const
+{
+    const std::array<std::string, 3> arguments =
+    {
+        "for-each-ref",
+        "--format=%(refname:short)%00%(objectname)%00",
+        "refs/heads/"
+    };
+
+    GitCommandResult result =
+        m_gitProcess.execute(
+            m_workingDirectory,
+            arguments);
+
+    if (result.exitCode != 0)
+    {
+        throw std::runtime_error(
+            "git for-each-ref failed: " +
+            result.stderrText);
+    }
+
+    std::string currentBranch;
+
+    {
+        const std::array<std::string, 2> currentArguments =
+        {
+            "branch",
+            "--show-current"
+        };
+
+        GitCommandResult currentResult =
+            m_gitProcess.execute(
+                m_workingDirectory,
+                currentArguments);
+
+        if (currentResult.exitCode != 0)
+        {
+            throw std::runtime_error(
+                "git branch failed: " +
+                currentResult.stderrText);
+        }
+
+        currentBranch =
+            currentResult.stdoutText;
+
+        while (!currentBranch.empty() &&
+               (currentBranch.back() == '\r' ||
+                currentBranch.back() == '\n'))
+        {
+            currentBranch.pop_back();
+        }
+    }
+
+    auto trim = [](std::string s)
+    {
+        while (!s.empty() &&
+               (s.back() == '\r' ||
+                s.back() == '\n' ||
+                s.back() == ' '))
+        {
+            s.pop_back();
+        }
+
+        std::size_t start = 0;
+
+        while (start < s.size() &&
+               (s[start] == '\r' ||
+                s[start] == '\n' ||
+                s[start] == ' '))
+        {
+            ++start;
+        }
+
+        return s.substr(start);
+    };
+
+    std::vector<Branch> branches;
+
+    std::size_t position = 0;
+
+    while (position < result.stdoutText.size())
+    {
+        std::size_t nameEnd =
+            result.stdoutText.find(
+                '\0',
+                position);
+
+        if (nameEnd == std::string::npos)
+        {
+            break;
+        }
+
+        std::size_t hashStart =
+            nameEnd + 1;
+
+        std::size_t hashEnd =
+            result.stdoutText.find(
+                '\0',
+                hashStart);
+
+        if (hashEnd == std::string::npos)
+        {
+            break;
+        }
+
+        Branch branch;
+
+        branch.name = trim(result.stdoutText.substr(
+            position,
+            nameEnd - position));
+
+        branch.hash = trim(result.stdoutText.substr(
+            hashStart,
+            hashEnd - hashStart));
+
+        branch.current =
+            branch.name == currentBranch;
+
+        branch.remote = false;
+
+        branches.push_back(
+            std::move(branch));
+
+        position = hashEnd + 1;
+    }
+
+    return branches;
+}
+
+void GitRepository::checkout(
+    const std::string& branchName) const
+{
+    const std::array<std::string, 2> arguments =
+    {
+        "switch",
+        branchName
+    };
+
+    GitCommandResult result =
+        m_gitProcess.execute(
+            m_workingDirectory,
+            arguments);
+
+    if (result.exitCode != 0)
+    {
+        throw std::runtime_error(
+            "git switch failed: " +
+            result.stderrText);
+    }
+}

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GitProcess.h"
+#include "../models/Branch.h"
 #include "../models/Commit.h"
 #include "../models/Diff.h"
 #include "../models/RepositoryStatus.h"
@@ -40,6 +41,10 @@ public:
     Diff diff(
         const std::filesystem::path& path,
         bool staged) const;
+
+    std::vector<Branch> branches() const;
+
+    void checkout(const std::string& branchName) const;
 
     GitCommandResult revParse(
         const std::string& argument) const;
