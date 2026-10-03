@@ -135,6 +135,12 @@ void AppController::connectSignals()
         {
             selectFile(index);
         });
+
+    m_window->on_checkout_branch(
+        [this](int index)
+        {
+            checkoutBranch(index);
+        });
 }
 
 
@@ -1014,6 +1020,14 @@ void AppController::checkoutBranch(int index)
         return;
     }
 
+    if (m_checkoutTask.valid() &&
+        m_checkoutTask.wait_for(
+            std::chrono::milliseconds(0)) !=
+        std::future_status::ready)
+    {
+        return;
+    }
+
     if (index < 0 ||
         index >= static_cast<int>(
             m_branches.size()))
@@ -1021,15 +1035,15 @@ void AppController::checkoutBranch(int index)
         return;
     }
 
-    const std::string branchName =
-        m_branches[index].name;
+    const Branch& branch =
+        m_branches[index];
 
-    if (m_branches[index].current)
+    if (branch.current)
     {
         return;
     }
 
-    startCheckout(branchName);
+    startCheckout(branch.name);
 }
 
 void AppController::startCheckout(
