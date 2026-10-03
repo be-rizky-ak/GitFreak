@@ -1,4 +1,5 @@
 import { Button, LineEdit, ListView } from "std-widgets.slint";
+import { OperationDialog } from "OperationDialog.slint";
 
 export component MainWindow inherits Window {
     title: "GitFreak";
@@ -21,6 +22,15 @@ export component MainWindow inherits Window {
 
     in property <int> staged-file-count: 0;
     in property <int> history-count: 0;
+
+    in property <bool> operation-visible: false;
+    in property <string> operation-title: "";
+    in property <string> operation-command: "";
+    in property <[string]> operation-log-lines: [];
+    in property <string> operation-status: "Running...";
+    in property <bool> operation-running: false;
+
+    callback close-operation-dialog();
 
     callback open-repository();
     callback stage-file(int);
@@ -407,6 +417,24 @@ export component MainWindow inherits Window {
                 text: "GitFreak";
                 color: #808080;
             }
+        }
+    }
+
+    OperationDialog {
+        x: 0px;
+        y: 0px;
+        width: root.width;
+        height: root.height;
+
+        dialog-visible: root.operation-visible;
+        operation-title: root.operation-title;
+        operation-command: root.operation-command;
+        operation-log-lines: root.operation-log-lines;
+        operation-status: root.operation-status;
+        operation-running: root.operation-running;
+
+        close-dialog => {
+            root.close-operation-dialog();
         }
     }
 }

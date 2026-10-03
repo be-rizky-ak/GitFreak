@@ -5,6 +5,8 @@
 #include "../models/Branch.h"
 #include "../models/Commit.h"
 #include "../models/Diff.h"
+#include "../models/OperationLog.h"
+#include "../models/OperationState.h"
 #include "../models/RepositoryStatus.h"
 
 #include <filesystem>
@@ -59,6 +61,18 @@ private:
         const std::string& branchName);
     void pollCheckout();
 
+    void startOperation(
+        const std::string& title,
+        const std::string& command);
+    void appendOperationLog(
+        bool isError,
+        const std::string& text);
+    void finishOperation(
+        bool success,
+        int exitCode);
+    void pollOperationLog();
+    void closeOperationDialog();
+
     slint::ComponentHandle<MainWindow> m_window;
 
     TaskScheduler& m_scheduler;
@@ -71,7 +85,6 @@ private:
     std::future<RepositoryStatus> m_statusTask;
     RepositoryStatus m_repositoryStatus;
     std::future<void> m_fileOperationTask;
-    slint::Timer m_repositoryTimer;
     std::vector<std::filesystem::path> m_fileOrder;
     std::future<void> m_commitTask;
     std::future<std::vector<Commit>> m_historyTask;
@@ -79,4 +92,12 @@ private:
     std::future<std::vector<Branch>> m_branchTask;
     std::future<void> m_checkoutTask;
     std::vector<Branch> m_branches;
+
+    std::shared_ptr<OperationLog> m_operationLog;
+    OperationState m_operationState;
+
+    slint::Timer m_repositoryTimer;
+    slint::Timer m_operationTimer;
+    std::vector<std::string> m_operationLines;
+    std::string m_operationPendingText;
 };

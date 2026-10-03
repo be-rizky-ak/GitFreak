@@ -31,6 +31,9 @@ add_executable(GitFreak
     src/models/Branch.h
     src/models/Commit.h
     src/models/Diff.h
+    src/models/OperationLog.cpp
+    src/models/OperationLog.h
+    src/models/OperationState.h
     src/models/RepositoryStatus.h
 
     src/tasks/TaskScheduler.cpp
@@ -40,7 +43,8 @@ add_executable(GitFreak
     src/platform/NativeDialogs.h
 )
 
-slint_target_sources(GitFreak
+slint_target_sources(
+    GitFreak
     ui/MainWindow.slint
 )
 

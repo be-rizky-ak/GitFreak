@@ -1,9 +1,15 @@
 #pragma once
 
 #include <filesystem>
+#include <functional>
 #include <span>
 #include <string>
 #include <string_view>
+
+using GitOutputCallback =
+    std::function<void(
+        bool isError,
+        const std::string& text)>;
 
 struct GitCommandResult
 {
@@ -19,6 +25,11 @@ public:
     GitCommandResult execute(
         const std::filesystem::path& workingDirectory,
         std::span<const std::string> arguments) const;
+
+    int executeStreaming(
+        const std::filesystem::path& workingDirectory,
+        std::span<const std::string> arguments,
+        const GitOutputCallback& outputCallback) const;
 
 private:
     static std::wstring utf8ToWide(std::string_view text);

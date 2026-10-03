@@ -95,6 +95,7 @@ AppController::AppController(
     : m_window(window)
     , m_scheduler(scheduler)
 {
+    m_operationLog = std::make_shared<OperationLog>();
     connectSignals();
 }
 
@@ -140,6 +141,12 @@ void AppController::connectSignals()
         [this](int index)
         {
             checkoutBranch(index);
+        });
+
+    m_window->on_close_operation_dialog(
+        [this]()
+        {
+            closeOperationDialog();
         });
 }
 
@@ -1057,15 +1064,32 @@ void AppController::startCheckout(
     const std::filesystem::path repositoryPath =
         m_repository->workingDirectory();
 
+    startOperation(
+        "Switch Branch",
+        "git switch " + branchName);
+
+    std::shared_ptr<OperationLog> operationLog =
+        m_operationLog;
+
     m_checkoutTask =
         m_scheduler.submit(
-            [repositoryPath, branchName]()
+            [repositoryPath,
+             branchName,
+             operationLog]()
             {
                 GitRepository repository(
                     repositoryPath);
 
-                repository.checkout(
-                    branchName);
+                repository.checkoutStreaming(
+                    branchName,
+                    [operationLog](
+                        bool isError,
+                        const std::string& text)
+                    {
+                        operationLog->append(
+                            isError,
+                            text);
+                    });
             });
 
     m_repositoryTimer.stop();
@@ -1100,6 +1124,10 @@ void AppController::pollCheckout()
     {
         m_checkoutTask.get();
 
+        finishOperation(
+            true,
+            0);
+
         m_window->set_diff_lines(
             std::make_shared<
                 slint::VectorModel<
@@ -1113,10 +1141,197 @@ void AppController::pollCheckout()
     }
     catch (const std::exception& e)
     {
+        appendOperationLog(
+            true,
+            e.what());
+
+        finishOperation(
+            false,
+            1);
+
         m_window->set_status_text(
             slint::SharedString(
                 std::string(
                     "Failed to switch branch: ") +
                 e.what()));
     }
+}
+
+void AppController::closeOperationDialog()
+{
+    if (m_operationState.status ==
+        OperationStatus::Running)
+    {
+        return;
+    }
+
+    m_operationTimer.stop();
+    m_window->set_operation_visible(false);
+}
+
+void AppController::pollOperationLog()
+{
+    if (!m_operationLog)
+    {
+        m_operationTimer.stop();
+        return;
+    }
+
+    std::vector<std::string> entries =
+        m_operationLog->consume();
+
+    bool changed = false;
+
+    for (const std::string& entry : entries)
+    {
+        m_operationPendingText += entry;
+
+        std::size_t newlinePosition = 0;
+
+        while ((newlinePosition =
+                    m_operationPendingText.find('\n'))
+               != std::string::npos)
+        {
+            std::string line =
+                m_operationPendingText.substr(
+                    0,
+                    newlinePosition);
+
+            if (!line.empty() && line.back() == '\r')
+            {
+                line.pop_back();
+            }
+
+            m_operationLines.push_back(
+                std::move(line));
+
+            m_operationPendingText.erase(
+                0,
+                newlinePosition + 1);
+
+            changed = true;
+        }
+
+        changed = true;
+    }
+
+    // Display an incomplete line while it is still arriving.
+    std::vector<std::string> visibleLines =
+        m_operationLines;
+
+    if (!m_operationPendingText.empty())
+    {
+        visibleLines.push_back(
+            m_operationPendingText);
+    }
+
+    if (changed)
+    {
+        std::vector<slint::SharedString> uiLines;
+        uiLines.reserve(visibleLines.size());
+
+        for (const std::string& line : visibleLines)
+        {
+            uiLines.emplace_back(line);
+        }
+
+        m_window->set_operation_log_lines(
+            std::make_shared<
+                slint::VectorModel<
+                    slint::SharedString>>(
+                std::move(uiLines)));
+    }
+
+    if (m_operationState.status != OperationStatus::Running &&
+        m_operationPendingText.empty())
+    {
+        m_operationTimer.stop();
+    }
+}
+
+void AppController::startOperation(
+    const std::string& title,
+    const std::string& command)
+{
+    m_operationLog =
+        std::make_shared<OperationLog>();
+
+    m_operationState =
+        OperationState{};
+
+    m_operationState.status =
+        OperationStatus::Running;
+
+    m_operationState.title =
+        title;
+
+    m_operationState.command =
+        command;
+
+    m_operationState.exitCode = -1;
+
+    m_operationLines.clear();
+    m_operationPendingText.clear();
+
+    m_window->set_operation_title(
+        slint::SharedString(title));
+
+    m_window->set_operation_command(
+        slint::SharedString(command));
+
+    m_window->set_operation_status(
+        slint::SharedString("Running..."));
+
+    m_window->set_operation_running(true);
+    m_window->set_operation_visible(true);
+
+    m_window->set_operation_log_lines(
+        std::make_shared<
+            slint::VectorModel<
+                slint::SharedString>>());
+
+    m_operationTimer.stop();
+
+    m_operationTimer.start(
+        slint::TimerMode::Repeated,
+        std::chrono::milliseconds(50),
+        [this]()
+        {
+            pollOperationLog();
+        });
+}
+
+void AppController::finishOperation(
+    bool success,
+    int exitCode)
+{
+    m_operationState.status =
+        success
+            ? OperationStatus::Success
+            : OperationStatus::Failed;
+
+    m_operationState.exitCode =
+        exitCode;
+
+    m_window->set_operation_running(false);
+
+    m_window->set_operation_status(
+        slint::SharedString(
+            success
+                ? "Completed"
+                : "Failed"));
+}
+
+void AppController::appendOperationLog(
+    bool isError,
+    const std::string& text)
+{
+    if (!m_operationLog)
+    {
+        return;
+    }
+
+    m_operationLog->append(
+        isError,
+        text);
 }

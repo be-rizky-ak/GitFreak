@@ -388,3 +388,26 @@ void GitRepository::checkout(
             result.stderrText);
     }
 }
+
+void GitRepository::checkoutStreaming(
+    const std::string& branchName,
+    const GitOutputCallback& outputCallback) const
+{
+    const std::array<std::string, 2> arguments =
+    {
+        "switch",
+        branchName
+    };
+
+    int exitCode =
+        m_gitProcess.executeStreaming(
+            m_workingDirectory,
+            arguments,
+            outputCallback);
+
+    if (exitCode != 0)
+    {
+        throw std::runtime_error(
+            "git switch failed.");
+    }
+}

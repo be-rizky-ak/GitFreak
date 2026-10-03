@@ -45,6 +45,9 @@ public:
     std::vector<Branch> branches() const;
 
     void checkout(const std::string& branchName) const;
+    void checkoutStreaming(
+        const std::string& branchName,
+        const GitOutputCallback& outputCallback) const;
 
     GitCommandResult revParse(
         const std::string& argument) const;
