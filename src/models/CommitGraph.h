@@ -11,6 +11,7 @@ struct CommitGraphNode
     int lane = 0;
 
     std::vector<int> parentLanes;
+    std::vector<int> activeLanes;
 };
 
 class CommitGraph

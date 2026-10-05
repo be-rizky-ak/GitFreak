@@ -25,7 +25,11 @@ export component MainWindow inherits Window {
     in property <int> history-count: 0;
     in property <[int]> history-lanes: [];
     in property <[int]> history-parent-lanes: [];
+    in property <[int]> history-parent-lanes-1: [];
     in property <[int]> history-parent-counts: [];
+    in property <[int]> history-active-lanes-0: [];
+    in property <[int]> history-active-lanes-1: [];
+    in property <[int]> history-active-lane-counts: [];
 
     in property <bool> operation-visible: false;
     in property <string> operation-title: "";
@@ -355,11 +359,6 @@ export component MainWindow inherits Window {
         }
     }
 
-        Text {
-            text: "History";
-            font-size: 20px;
-        }
-
         Rectangle {
             height: 220px;
 
@@ -371,6 +370,11 @@ export component MainWindow inherits Window {
             VerticalLayout {
                 padding: 8px;
                 spacing: 6px;
+
+                Text {
+                    text: "History";
+                    font-size: 20px;
+                }
 
                 ListView {
                     vertical-stretch: 1;
@@ -388,11 +392,23 @@ export component MainWindow inherits Window {
                                 lane:
                                     root.history-lanes[index];
 
-                                parent-lane:
+                                parent-lane-0:
                                     root.history-parent-lanes[index];
 
-                                has-parent:
-                                    root.history-parent-counts[index] > 0;
+                                parent-lane-1:
+                                    root.history-parent-lanes-1[index];
+
+                                parent-count:
+                                    root.history-parent-counts[index];
+
+                                active-lane-0:
+                                    root.history-active-lanes-0[index];
+
+                                active-lane-1:
+                                    root.history-active-lanes-1[index];
+
+                                active-lane-count:
+                                    root.history-active-lane-counts[index];
                             }
 
                             VerticalLayout {

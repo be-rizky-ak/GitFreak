@@ -1,7 +1,14 @@
 export component CommitGraphRow inherits Rectangle {
     in property <int> lane: 0;
-    in property <int> parent-lane: 0;
-    in property <bool> has-parent: false;
+
+    in property <int> parent-lane-0: 0;
+    in property <int> parent-lane-1: 0;
+
+    in property <int> parent-count: 0;
+
+    in property <int> active-lane-0: 0;
+    in property <int> active-lane-1: 0;
+    in property <int> active-lane-count: 0;
 
     in property <int> lane-spacing: 16;
     in property <int> graph-left: 18;
@@ -9,24 +16,196 @@ export component CommitGraphRow inherits Rectangle {
     height: 42px;
     background: transparent;
 
+
+    // =================================================
+    // POSITIONS
+    // =================================================
+
     property <length> current-x:
         root.graph-left * 1px
         + root.lane * root.lane-spacing * 1px;
 
-    property <length> parent-x:
+    property <length> parent-x-0:
         root.graph-left * 1px
-        + root.parent-lane * root.lane-spacing * 1px;
+        + root.parent-lane-0 * root.lane-spacing * 1px;
 
-    // ------------------------------------------------------------
-    // Same-lane connection
+    property <length> parent-x-1:
+        root.graph-left * 1px
+        + root.parent-lane-1 * root.lane-spacing * 1px;
+
+    property <length> active-x-0:
+        root.graph-left * 1px
+        + root.active-lane-0 * root.lane-spacing * 1px;
+
+    property <length> active-x-1:
+        root.graph-left * 1px
+        + root.active-lane-1 * root.lane-spacing * 1px;
+
+
+    // =================================================
+    // CURRENT LANE - INCOMING
+    // =================================================
     //
-    // The commit continues straight downward.
-    // ------------------------------------------------------------
+    // The current lane enters from the previous row
+    // and reaches the commit node.
+    //
+    //       │
+    //       │
+    //       ●
+    //
 
     Rectangle {
         visible:
-            root.has-parent &&
-            root.lane == root.parent-lane;
+            root.lane >= 0;
+
+        width: 3px;
+
+        x:
+            root.current-x - 1.5px;
+
+        y: 0px;
+
+        height:
+            root.height / 2;
+
+        background: #a0a0a0;
+    }
+
+
+    // =================================================
+    // ACTIVE BRANCH LANES
+    // =================================================
+    //
+    // These are lanes that continue after this commit.
+    //
+    // IMPORTANT:
+    // On a merge row, the second parent lane starts
+    // BELOW the merge node. It must not appear above
+    // the node.
+    //
+    // On subsequent rows, the lane enters from the top
+    // normally.
+
+
+    // First active lane.
+
+    Rectangle {
+        visible:
+            root.active-lane-count > 0 &&
+            root.active-lane-0 != root.lane &&
+            !(
+                root.parent-count > 1 &&
+                root.active-lane-0 == root.parent-lane-1
+            );
+
+        width: 3px;
+
+        x:
+            root.active-x-0 - 1.5px;
+
+        y: 0px;
+
+        height:
+            root.height;
+
+        background: #a0a0a0;
+    }
+
+
+    // First active lane when it is the second parent
+    // of the current merge commit.
+    //
+    // Start it at the branch point instead of the
+    // top of the row.
+
+    Rectangle {
+        visible:
+            root.active-lane-count > 0 &&
+            root.active-lane-0 != root.lane &&
+            root.parent-count > 1 &&
+            root.active-lane-0 == root.parent-lane-1;
+
+        width: 3px;
+
+        x:
+            root.active-x-0 - 1.5px;
+
+        y:
+            root.height * 3 / 4;
+
+        height:
+            root.height / 4 + 1px;
+
+        background: #a0a0a0;
+    }
+
+
+    // Second active lane.
+
+    Rectangle {
+        visible:
+            root.active-lane-count > 1 &&
+            root.active-lane-1 != root.lane &&
+            root.active-lane-1 != root.active-lane-0 &&
+            !(
+                root.parent-count > 1 &&
+                root.active-lane-1 == root.parent-lane-1
+            );
+
+        width: 3px;
+
+        x:
+            root.active-x-1 - 1.5px;
+
+        y: 0px;
+
+        height:
+            root.height;
+
+        background: #a0a0a0;
+    }
+
+
+    // Second active lane when it is the second parent
+    // of the current merge commit.
+
+    Rectangle {
+        visible:
+            root.active-lane-count > 1 &&
+            root.active-lane-1 != root.lane &&
+            root.active-lane-1 != root.active-lane-0 &&
+            root.parent-count > 1 &&
+            root.active-lane-1 == root.parent-lane-1;
+
+        width: 3px;
+
+        x:
+            root.active-x-1 - 1.5px;
+
+        y:
+            root.height * 3 / 4;
+
+        height:
+            root.height / 4 + 1px;
+
+        background: #a0a0a0;
+    }
+
+
+    // =================================================
+    // FIRST PARENT
+    // =================================================
+
+    // Same lane.
+    //
+    //       ●
+    //       │
+    //       │
+
+    Rectangle {
+        visible:
+            root.parent-count > 0 &&
+            root.lane == root.parent-lane-0;
 
         width: 3px;
 
@@ -42,14 +221,17 @@ export component CommitGraphRow inherits Rectangle {
         background: #a0a0a0;
     }
 
-    // ------------------------------------------------------------
-    // Different-lane: leave current lane
-    // ------------------------------------------------------------
+
+    // First parent moves to another lane.
+    //
+    //       ●
+    //       │
+    //       └────
 
     Rectangle {
         visible:
-            root.has-parent &&
-            root.lane != root.parent-lane;
+            root.parent-count > 0 &&
+            root.lane != root.parent-lane-0;
 
         width: 3px;
 
@@ -65,25 +247,24 @@ export component CommitGraphRow inherits Rectangle {
         background: #a0a0a0;
     }
 
-    // ------------------------------------------------------------
-    // Different-lane: horizontal transition
-    // ------------------------------------------------------------
+
+    // Horizontal first-parent connection.
 
     Rectangle {
         visible:
-            root.has-parent &&
-            root.lane != root.parent-lane;
+            root.parent-count > 0 &&
+            root.lane != root.parent-lane-0;
 
         width:
-            root.parent-x > root.current-x
-                ? root.parent-x - root.current-x + 3px
-                : root.current-x - root.parent-x + 3px;
+            root.parent-x-0 > root.current-x
+                ? root.parent-x-0 - root.current-x + 3px
+                : root.current-x - root.parent-x-0 + 3px;
 
         height: 3px;
 
         x:
-            root.parent-x < root.current-x
-                ? root.parent-x - 1.5px
+            root.parent-x-0 < root.current-x
+                ? root.parent-x-0 - 1.5px
                 : root.current-x - 1.5px;
 
         y:
@@ -92,19 +273,18 @@ export component CommitGraphRow inherits Rectangle {
         background: #a0a0a0;
     }
 
-    // ------------------------------------------------------------
-    // Different-lane: enter parent lane
-    // ------------------------------------------------------------
+
+    // Continue down first-parent lane.
 
     Rectangle {
         visible:
-            root.has-parent &&
-            root.lane != root.parent-lane;
+            root.parent-count > 0 &&
+            root.lane != root.parent-lane-0;
 
         width: 3px;
 
         x:
-            root.parent-x - 1.5px;
+            root.parent-x-0 - 1.5px;
 
         y:
             root.height * 3 / 4;
@@ -115,11 +295,70 @@ export component CommitGraphRow inherits Rectangle {
         background: #a0a0a0;
     }
 
-    // ------------------------------------------------------------
-    // Commit node
+
+    // =================================================
+    // SECOND PARENT / MERGE
+    // =================================================
+
+    // Branch starts below the merge node.
     //
-    // Draw this last so the line doesn't cover the node.
-    // ------------------------------------------------------------
+    //       ●
+    //       │
+    //       ├────
+    //
+    // This is deliberately only a short vertical
+    // segment. The continuation is handled by the
+    // active-lane rectangles above.
+
+    Rectangle {
+        visible:
+            root.parent-count > 1 &&
+            root.lane != root.parent-lane-1;
+
+        width: 3px;
+
+        x:
+            root.current-x - 1.5px;
+
+        y:
+            root.height / 2;
+
+        height:
+            root.height / 4;
+
+        background: #a0a0a0;
+    }
+
+
+    // Horizontal branch to second parent.
+
+    Rectangle {
+        visible:
+            root.parent-count > 1 &&
+            root.lane != root.parent-lane-1;
+
+        width:
+            root.parent-x-1 > root.current-x
+                ? root.parent-x-1 - root.current-x + 3px
+                : root.current-x - root.parent-x-1 + 3px;
+
+        height: 3px;
+
+        x:
+            root.parent-x-1 < root.current-x
+                ? root.parent-x-1 - 1.5px
+                : root.current-x - 1.5px;
+
+        y:
+            root.height * 3 / 4;
+
+        background: #a0a0a0;
+    }
+
+
+    // =================================================
+    // COMMIT NODE
+    // =================================================
 
     Rectangle {
         width: 10px;

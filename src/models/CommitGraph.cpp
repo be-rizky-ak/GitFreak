@@ -19,7 +19,7 @@ CommitGraph::build(
     }
 
     // Each lane contains the commit hash
-    // that is expected to appear next in that lane.
+    // expected to appear next in that lane.
     std::vector<std::string> lanes;
 
     auto findLane =
@@ -41,7 +41,6 @@ CommitGraph::build(
     auto createLane =
         [&lanes](const std::string& hash) -> int
         {
-            // Reuse an empty lane if possible.
             for (int lane = 0;
                  lane < static_cast<int>(lanes.size());
                  ++lane)
@@ -49,6 +48,7 @@ CommitGraph::build(
                 if (lanes[lane].empty())
                 {
                     lanes[lane] = hash;
+
                     return lane;
                 }
             }
@@ -69,8 +69,8 @@ CommitGraph::build(
         int currentLane =
             findLane(commit.hash);
 
-        // If this commit wasn't expected by an existing
-        // lane, create a new one.
+        // If this commit isn't currently expected
+        // by any lane, create a new lane.
         if (currentLane < 0)
         {
             currentLane =
@@ -80,10 +80,10 @@ CommitGraph::build(
         node.lane =
             currentLane;
 
-        // This commit has now been consumed from its lane.
+        // This commit has now been consumed.
         lanes[currentLane].clear();
 
-        // Assign lanes to the commit's parents.
+        // Assign lanes to all parents.
         for (std::size_t parentIndex = 0;
              parentIndex < commit.parents.size();
              ++parentIndex)
@@ -103,7 +103,8 @@ CommitGraph::build(
             {
                 if (parentIndex == 0)
                 {
-                    // First parent continues on the current lane.
+                    // First parent continues on the
+                    // current lane.
                     parentLane =
                         currentLane;
 
@@ -112,13 +113,13 @@ CommitGraph::build(
                 }
                 else
                 {
-                    // Additional parents are merge branches.
+                    // Additional parents create
+                    // additional lanes.
                     parentLane =
                         createLane(parent);
                 }
             }
 
-            // Avoid duplicate lane entries.
             if (std::find(
                     node.parentLanes.begin(),
                     node.parentLanes.end(),
@@ -127,6 +128,21 @@ CommitGraph::build(
             {
                 node.parentLanes.push_back(
                     parentLane);
+            }
+        }
+
+        // -------------------------------------------------
+        // Capture lanes that remain active after this row.
+        // -------------------------------------------------
+
+        for (int lane = 0;
+             lane < static_cast<int>(lanes.size());
+             ++lane)
+        {
+            if (!lanes[lane].empty())
+            {
+                node.activeLanes.push_back(
+                    lane);
             }
         }
 

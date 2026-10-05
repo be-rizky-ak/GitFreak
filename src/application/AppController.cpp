@@ -1166,37 +1166,87 @@ void AppController::updateHistoryGraph(
         CommitGraph::build(commits);
 
     std::vector<int> lanes;
-    std::vector<int> parentLanes;
+    std::vector<int> parentLane0;
+    std::vector<int> parentLane1;
     std::vector<int> parentCounts;
 
-    lanes.reserve(
-        graph.size());
+    std::vector<int> activeLane0;
+    std::vector<int> activeLane1;
+    std::vector<int> activeLaneCounts;
 
-    parentLanes.reserve(
-        graph.size());
+    lanes.reserve(graph.size());
+    parentLane0.reserve(graph.size());
+    parentLane1.reserve(graph.size());
+    parentCounts.reserve(graph.size());
 
-    parentCounts.reserve(
-        graph.size());
+    activeLane0.reserve(graph.size());
+    activeLane1.reserve(graph.size());
+    activeLaneCounts.reserve(graph.size());
 
-    for (const CommitGraphNode& node :
-         graph)
+    for (const CommitGraphNode& node : graph)
     {
         lanes.push_back(
             node.lane);
 
-        if (!node.parentLanes.empty())
-        {
-            parentLanes.push_back(
-                node.parentLanes[0]);
+        const int parentCount =
+            static_cast<int>(
+                node.parentLanes.size());
 
-            parentCounts.push_back(1);
+        parentCounts.push_back(
+            parentCount);
+
+        // First parent.
+        if (parentCount > 0)
+        {
+            parentLane0.push_back(
+                node.parentLanes[0]);
         }
         else
         {
-            parentLanes.push_back(
+            parentLane0.push_back(
                 node.lane);
+        }
 
-            parentCounts.push_back(0);
+        // Second parent.
+        if (parentCount > 1)
+        {
+            parentLane1.push_back(
+                node.parentLanes[1]);
+        }
+        else
+        {
+            parentLane1.push_back(
+                node.lane);
+        }
+
+        // Active lanes.
+        const int activeCount =
+            static_cast<int>(
+                node.activeLanes.size());
+
+        activeLaneCounts.push_back(
+            activeCount);
+
+        if (activeCount > 0)
+        {
+            activeLane0.push_back(
+                node.activeLanes[0]);
+        }
+        else
+        {
+            activeLane0.push_back(
+                node.lane);
+        }
+
+        if (activeCount > 1)
+        {
+            activeLane1.push_back(
+                node.activeLanes[1]);
+        }
+        else
+        {
+            activeLane1.push_back(
+                node.lane);
         }
     }
 
@@ -1208,12 +1258,32 @@ void AppController::updateHistoryGraph(
     m_window->set_history_parent_lanes(
         std::make_shared<
             slint::VectorModel<int>>(
-                std::move(parentLanes)));
+                std::move(parentLane0)));
+
+    m_window->set_history_parent_lanes_1(
+        std::make_shared<
+            slint::VectorModel<int>>(
+                std::move(parentLane1)));
 
     m_window->set_history_parent_counts(
         std::make_shared<
             slint::VectorModel<int>>(
                 std::move(parentCounts)));
+
+    m_window->set_history_active_lanes_0(
+        std::make_shared<
+            slint::VectorModel<int>>(
+                std::move(activeLane0)));
+
+    m_window->set_history_active_lanes_1(
+        std::make_shared<
+            slint::VectorModel<int>>(
+                std::move(activeLane1)));
+
+    m_window->set_history_active_lane_counts(
+        std::make_shared<
+            slint::VectorModel<int>>(
+                std::move(activeLaneCounts)));
 }
 
 void AppController::closeOperationDialog()
