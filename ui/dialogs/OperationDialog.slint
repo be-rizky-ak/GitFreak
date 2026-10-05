@@ -1,0 +1,151 @@
+import { Button, ListView } from "std-widgets.slint";
+
+component OperationDialog inherits Rectangle {
+    in property <bool> dialog-visible: false;
+    in property <string> operation-title: "";
+    in property <string> operation-command: "";
+    in property <[string]> operation-log-lines: [];
+    in property <string> operation-status: "Running...";
+    in property <bool> operation-running: false;
+
+    callback close-dialog();
+
+    visible: root.dialog-visible;
+
+    background: #00000080;
+
+    Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+
+        width: 760px;
+        height: 520px;
+
+        background: #ffffff;
+        border-radius: 8px;
+        border-width: 1px;
+        border-color: #c8c8c8;
+
+        VerticalLayout {
+            padding: 16px;
+            spacing: 12px;
+
+            HorizontalLayout {
+                height: 32px;
+                spacing: 8px;
+
+                Text {
+                    text: root.operation-title;
+                    font-size: 22px;
+                    color: #252525;
+
+                    horizontal-stretch: 1;
+                    vertical-alignment: center;
+                }
+
+                Text {
+                    text: root.operation-running
+                        ? "Running"
+                        : root.operation-status;
+
+                    color: root.operation-running
+                        ? #1565c0
+                        : #2e7d32;
+
+                    vertical-alignment: center;
+                }
+            }
+
+            Text {
+                text: "Command";
+                font-size: 13px;
+                color: #707070;
+            }
+
+            Rectangle {
+                height: 36px;
+                background: #f1f3f5;
+                border-radius: 4px;
+
+                Text {
+                    x: 10px;
+                    y: 0px;
+                    width: parent.width - 20px;
+                    height: parent.height;
+
+                    text: "$ " + root.operation-command;
+                    font-family: "Consolas";
+                    font-size: 13px;
+                    color: #252525;
+
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+            }
+
+            Text {
+                text: "Output";
+                font-size: 13px;
+                color: #707070;
+            }
+
+            Rectangle {
+                vertical-stretch: 1;
+
+                background: #17191d;
+                border-radius: 4px;
+
+                ListView {
+                    width: parent.width;
+                    height: parent.height;
+
+                    for line in root.operation-log-lines : Rectangle {
+                        height: 20px;
+                        width: parent.width;
+
+                        background: transparent;
+
+                        Text {
+                            x: 8px;
+                            y: 0px;
+                            width: parent.width - 16px;
+                            height: parent.height;
+
+                            text: line;
+                            font-family: "Consolas";
+                            font-size: 12px;
+                            color: #d5d9df;
+
+                            vertical-alignment: center;
+                            overflow: elide;
+                        }
+                    }
+                }
+            }
+
+            HorizontalLayout {
+                height: 36px;
+                spacing: 8px;
+
+                Text {
+                    text: root.operation-status;
+                    color: #707070;
+
+                    horizontal-stretch: 1;
+                    vertical-alignment: center;
+                }
+
+                Button {
+                    text: "Close";
+                    enabled: !root.operation-running;
+
+                    clicked => {
+                        root.close-dialog();
+                    }
+                }
+            }
+        }
+    }
+}
+
+export { OperationDialog }

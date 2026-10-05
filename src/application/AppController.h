@@ -74,6 +74,14 @@ private:
     void startPush();
     void pollPush();
 
+    void cloneRepository(
+        const std::string& url,
+        const std::filesystem::path& destination);
+    void startClone(
+        const std::string& url,
+        const std::filesystem::path& destination);
+    void pollClone();
+
     void updateHistoryGraph(
         const std::vector<Commit>& commits);
 
@@ -88,6 +96,9 @@ private:
         int exitCode);
     void pollOperationLog();
     void closeOperationDialog();
+
+    void showCloneDialog();
+    void browseCloneDestination();
 
     slint::ComponentHandle<MainWindow> m_window;
 
@@ -111,6 +122,7 @@ private:
     std::future<int> m_fetchTask;
     std::future<int> m_pullTask;
     std::future<int> m_pushTask;
+    std::future<int> m_cloneTask;
 
     std::shared_ptr<OperationLog> m_operationLog;
     OperationState m_operationState;
@@ -119,4 +131,5 @@ private:
     slint::Timer m_operationTimer;
     std::vector<std::string> m_operationLines;
     std::string m_operationPendingText;
+    std::filesystem::path m_cloneDestination;
 };

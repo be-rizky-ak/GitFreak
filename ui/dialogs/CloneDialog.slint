@@ -1,0 +1,101 @@
+import { Button, LineEdit } from "std-widgets.slint";
+
+export component CloneDialog inherits Rectangle {
+    callback cancel();
+    callback clone(string, string);
+    callback browse-destination();
+
+    in-out property <string> repository-url: "";
+    in-out property <string> destination: "";
+
+    width: 520px;
+    height: 230px;
+
+    background: #ffffff;
+    border-radius: 6px;
+    border-width: 1px;
+    border-color: #d0d0d0;
+
+    VerticalLayout {
+        padding: 20px;
+        spacing: 14px;
+
+        Text {
+            text: "Clone Repository";
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        VerticalLayout {
+            spacing: 5px;
+
+            Text {
+                text: "Repository URL";
+                font-size: 13px;
+                color: #505050;
+            }
+
+            LineEdit {
+                text <=> root.repository-url;
+                placeholder-text: "https://github.com/user/repository.git";
+            }
+        }
+
+        VerticalLayout {
+            spacing: 5px;
+
+            Text {
+                text: "Destination";
+                font-size: 13px;
+                color: #505050;
+            }
+
+            HorizontalLayout {
+                spacing: 6px;
+
+                LineEdit {
+                    horizontal-stretch: 1;
+
+                    text <=> root.destination;
+                    placeholder-text: "C:\\Projects\\Repository";
+                }
+
+                Button {
+                    text: "...";
+
+                    clicked => {
+                        root.browse-destination();
+                    }
+                }
+            }
+        }
+
+        HorizontalLayout {
+            alignment: end;
+            spacing: 8px;
+
+            Button {
+                text: "Cancel";
+
+                clicked => {
+                    root.cancel();
+                }
+            }
+
+            Button {
+                text: "Clone";
+
+                enabled:
+                    root.repository-url != "" &&
+                    root.destination != "";
+
+                clicked => {
+                    root.clone(
+                        root.repository-url,
+                        root.destination
+                    );
+                }
+            }
+        }
+    }
+}

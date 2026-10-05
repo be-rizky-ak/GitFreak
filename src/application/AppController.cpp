@@ -166,6 +166,39 @@ void AppController::connectSignals()
         {
             push();
         });
+
+    m_window->on_clone_dialog_cancel(
+        [this]()
+        {
+            m_window->set_clone_dialog_visible(
+                false);
+        });
+
+    m_window->on_clone_dialog_clone(
+        [this](
+            const slint::SharedString& url,
+            const slint::SharedString& destination)
+        {
+            m_window->set_clone_dialog_visible(
+                false);
+
+            cloneRepository(
+                std::string(url),
+                std::filesystem::path(
+                    std::string(destination)));
+        });
+    
+    m_window->on_clone_dialog_browse(
+        [this]()
+        {
+            browseCloneDestination();
+        });
+
+    m_window->on_clone(
+        [this]()
+        {
+            showCloneDialog();
+        });
 }
 
 
@@ -1558,6 +1591,140 @@ void AppController::pollPush()
     }
 }
 
+void AppController::cloneRepository(
+    const std::string& url,
+    const std::filesystem::path& destination)
+{
+    if (url.empty() ||
+        destination.empty())
+    {
+        return;
+    }
+
+    if (m_cloneTask.valid() &&
+        m_cloneTask.wait_for(
+            std::chrono::milliseconds(0)) !=
+        std::future_status::ready)
+    {
+        return;
+    }
+
+    startClone(
+        url,
+        destination);
+}
+
+void AppController::startClone(
+    const std::string& url,
+    const std::filesystem::path& destination)
+{
+    startOperation(
+        "Clone",
+        "git clone " + url);
+
+    std::shared_ptr<OperationLog> operationLog =
+        m_operationLog;
+
+    m_cloneDestination = destination;
+
+    m_cloneTask =
+        m_scheduler.submit(
+            [url,
+             destination,
+             operationLog]()
+            {
+                GitProcess gitProcess;
+
+                return gitProcess.cloneStreaming(
+                    url,
+                    destination,
+                    [operationLog](
+                        bool isError,
+                        const std::string& text)
+                    {
+                        operationLog->append(
+                            isError,
+                            text);
+                    });
+            });
+
+    m_repositoryTimer.stop();
+
+    m_repositoryTimer.start(
+        slint::TimerMode::Repeated,
+        std::chrono::milliseconds(50),
+        [this]()
+        {
+            pollClone();
+        });
+}
+
+void AppController::pollClone()
+{
+    if (!m_cloneTask.valid())
+    {
+        m_repositoryTimer.stop();
+        return;
+    }
+
+    if (m_cloneTask.wait_for(
+            std::chrono::milliseconds(0)) !=
+        std::future_status::ready)
+    {
+        return;
+    }
+
+    m_repositoryTimer.stop();
+
+    try
+    {
+        const int exitCode =
+            m_cloneTask.get();
+
+        if (exitCode == 0)
+        {
+            finishOperation(
+                true,
+                0);
+
+            // Open the newly cloned repository.
+            m_repository =
+                std::make_unique<GitRepository>(
+                    m_cloneDestination);
+
+            // Continue using the existing
+            // repository refresh pipeline.
+            startStatusRefresh();
+        }
+        else
+        {
+            finishOperation(
+                false,
+                exitCode);
+
+            m_window->set_status_text(
+                slint::SharedString(
+                    "Failed to clone."));
+        }
+    }
+    catch (const std::exception& e)
+    {
+        appendOperationLog(
+            true,
+            e.what());
+
+        finishOperation(
+            false,
+            1);
+
+        m_window->set_status_text(
+            slint::SharedString(
+                std::string(
+                    "Failed to clone: ") +
+                e.what()));
+    }
+}
+
 void AppController::updateHistoryGraph(
     const std::vector<Commit>& commits)
 {
@@ -1862,4 +2029,30 @@ void AppController::appendOperationLog(
     m_operationLog->append(
         isError,
         text);
+}
+
+void AppController::showCloneDialog()
+{
+    m_window->set_clone_dialog_url(
+        slint::SharedString());
+
+    m_window->set_clone_dialog_destination(
+        slint::SharedString());
+
+    m_window->set_clone_dialog_visible(true);
+}
+
+void AppController::browseCloneDestination()
+{
+    const auto folder =
+        NativeDialogs::pickFolder();
+
+    if (!folder)
+    {
+        return;
+    }
+
+    m_window->set_clone_dialog_destination(
+        slint::SharedString(
+            folder->string()));
 }

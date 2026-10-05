@@ -31,6 +31,11 @@ public:
         std::span<const std::string> arguments,
         const GitOutputCallback& outputCallback) const;
 
+    int cloneStreaming(
+        const std::string& url,
+        const std::filesystem::path& destination,
+        const GitOutputCallback& outputCallback) const;
+
 private:
     static std::wstring utf8ToWide(std::string_view text);
 

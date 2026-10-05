@@ -2,6 +2,7 @@
 
 #include <windows.h>
 
+#include <array>
 #include <stdexcept>
 #include <thread>
 #include <vector>
@@ -472,4 +473,22 @@ std::string GitProcess::readPipe(void* pipe)
     }
 
     return result;
+}
+
+int GitProcess::cloneStreaming(
+    const std::string& url,
+    const std::filesystem::path& destination,
+    const GitOutputCallback& outputCallback) const
+{
+    const std::array<std::string, 3> arguments =
+    {
+        "clone",
+        url,
+        destination.filename().string()
+    };
+
+    return executeStreaming(
+        destination.parent_path(),
+        arguments,
+        outputCallback);
 }

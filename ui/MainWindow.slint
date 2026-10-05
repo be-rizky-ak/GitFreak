@@ -1,5 +1,6 @@
 import { Button, LineEdit, ListView } from "std-widgets.slint";
-import { OperationDialog } from "OperationDialog.slint";
+import { CloneDialog } from "dialogs/CloneDialog.slint";
+import { OperationDialog } from "dialogs/OperationDialog.slint";
 import { CommitGraphRow } from "CommitGraphRow.slint";
 
 export component MainWindow inherits Window {
@@ -38,6 +39,10 @@ export component MainWindow inherits Window {
     in property <string> operation-status: "Running...";
     in property <bool> operation-running: false;
 
+    in property <bool> clone-dialog-visible: false;
+    in-out property <string> clone-dialog-url: "";
+    in-out property <string> clone-dialog-destination: "";
+
     callback close-operation-dialog();
 
     callback open-repository();
@@ -49,6 +54,10 @@ export component MainWindow inherits Window {
     callback fetch();
     callback pull();
     callback push();
+    callback clone-dialog-cancel();
+    callback clone-dialog-clone(string, string);
+    callback clone-dialog-browse();
+    callback clone();
 
     VerticalLayout {
         padding: 20px;
@@ -93,6 +102,14 @@ export component MainWindow inherits Window {
 
                 clicked => {
                     root.push();
+                }
+            }
+
+            Button {
+                text: "Clone";
+
+                clicked => {
+                    root.clone();
                 }
             }
         }
@@ -499,6 +516,33 @@ export component MainWindow inherits Window {
 
         close-dialog => {
             root.close-operation-dialog();
+        }
+    }
+
+    if root.clone-dialog-visible : Rectangle {
+        background: #00000040;
+
+        CloneDialog {
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+
+            repository-url <=> root.clone-dialog-url;
+            destination <=> root.clone-dialog-destination;
+
+            cancel => {
+                root.clone-dialog-cancel();
+            }
+
+            clone(url, destination) => {
+                root.clone-dialog-clone(
+                    url,
+                    destination
+                );
+            }
+
+            browse-destination => {
+                root.clone-dialog-browse();
+            }
         }
     }
 }
