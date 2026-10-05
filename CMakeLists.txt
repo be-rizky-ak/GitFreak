@@ -30,6 +30,8 @@ add_executable(GitFreak
     
     src/models/Branch.h
     src/models/Commit.h
+    src/models/CommitGraph.cpp
+    src/models/CommitGraph.h
     src/models/Diff.h
     src/models/OperationLog.cpp
     src/models/OperationLog.h

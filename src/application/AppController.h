@@ -4,6 +4,7 @@
 
 #include "../models/Branch.h"
 #include "../models/Commit.h"
+#include "../models/CommitGraph.h"
 #include "../models/Diff.h"
 #include "../models/OperationLog.h"
 #include "../models/OperationState.h"
@@ -60,6 +61,9 @@ private:
     void startCheckout(
         const std::string& branchName);
     void pollCheckout();
+
+    void updateHistoryGraph(
+        const std::vector<Commit>& commits);
 
     void startOperation(
         const std::string& title,

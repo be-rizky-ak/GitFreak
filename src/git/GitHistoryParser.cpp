@@ -1,10 +1,45 @@
 #include "GitHistoryParser.h"
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace
 {
+
+void trimLineEndings(
+    std::string& value)
+{
+    std::size_t start = 0;
+
+    // Remove leading CR/LF.
+    while (start < value.size() &&
+           (value[start] == '\r' ||
+            value[start] == '\n'))
+    {
+        ++start;
+    }
+
+    std::size_t end =
+        value.size();
+
+    // Remove trailing CR/LF.
+    while (end > start &&
+           (value[end - 1] == '\r' ||
+            value[end - 1] == '\n'))
+    {
+        --end;
+    }
+
+    if (start != 0 ||
+        end != value.size())
+    {
+        value =
+            value.substr(
+                start,
+                end - start);
+    }
+}
 
 std::vector<std::string> splitParents(
     std::string_view value)
@@ -90,23 +125,55 @@ std::vector<Commit> GitHistoryParser::parse(
 
         Commit commit;
 
-        commit.hash =
+        // Git's pretty format leaves a newline
+        // between records. That newline becomes
+        // part of the next HASH field.
+        //
+        // Remove only CR/LF. Do not trim general
+        // whitespace because spaces can be valid
+        // content in fields such as the subject.
+        std::string hash =
             std::string(fields[0]);
 
-        commit.parents =
-            splitParents(fields[1]);
+        std::string parents =
+            std::string(fields[1]);
 
-        commit.author =
+        std::string author =
             std::string(fields[2]);
 
-        commit.email =
+        std::string email =
             std::string(fields[3]);
 
-        commit.date =
+        std::string date =
             std::string(fields[4]);
 
-        commit.subject =
+        std::string subject =
             std::string(fields[5]);
+
+        trimLineEndings(hash);
+        trimLineEndings(parents);
+        trimLineEndings(author);
+        trimLineEndings(email);
+        trimLineEndings(date);
+        trimLineEndings(subject);
+
+        commit.hash =
+            std::move(hash);
+
+        commit.parents =
+            splitParents(parents);
+
+        commit.author =
+            std::move(author);
+
+        commit.email =
+            std::move(email);
+
+        commit.date =
+            std::move(date);
+
+        commit.subject =
+            std::move(subject);
 
         result.push_back(
             std::move(commit));

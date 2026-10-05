@@ -418,8 +418,6 @@ void AppController::pollStatus()
         }
 
         startHistoryRefresh();
-
-        startBranchRefresh();
     }
     catch (const std::exception& e)
     {
@@ -728,6 +726,8 @@ void AppController::pollHistory()
         std::vector<Commit> commits =
             m_historyTask.get();
 
+        updateHistoryGraph(commits);
+
         std::vector<slint::SharedString>
             commitHashes;
 
@@ -776,6 +776,8 @@ void AppController::pollHistory()
         m_window->set_history_count(
             static_cast<int>(
                 commits.size()));
+        
+        startBranchRefresh();
     }
     catch (const std::exception& e)
     {
@@ -1155,6 +1157,63 @@ void AppController::pollCheckout()
                     "Failed to switch branch: ") +
                 e.what()));
     }
+}
+
+void AppController::updateHistoryGraph(
+    const std::vector<Commit>& commits)
+{
+    std::vector<CommitGraphNode> graph =
+        CommitGraph::build(commits);
+
+    std::vector<int> lanes;
+    std::vector<int> parentLanes;
+    std::vector<int> parentCounts;
+
+    lanes.reserve(
+        graph.size());
+
+    parentLanes.reserve(
+        graph.size());
+
+    parentCounts.reserve(
+        graph.size());
+
+    for (const CommitGraphNode& node :
+         graph)
+    {
+        lanes.push_back(
+            node.lane);
+
+        if (!node.parentLanes.empty())
+        {
+            parentLanes.push_back(
+                node.parentLanes[0]);
+
+            parentCounts.push_back(1);
+        }
+        else
+        {
+            parentLanes.push_back(
+                node.lane);
+
+            parentCounts.push_back(0);
+        }
+    }
+
+    m_window->set_history_lanes(
+        std::make_shared<
+            slint::VectorModel<int>>(
+                std::move(lanes)));
+
+    m_window->set_history_parent_lanes(
+        std::make_shared<
+            slint::VectorModel<int>>(
+                std::move(parentLanes)));
+
+    m_window->set_history_parent_counts(
+        std::make_shared<
+            slint::VectorModel<int>>(
+                std::move(parentCounts)));
 }
 
 void AppController::closeOperationDialog()

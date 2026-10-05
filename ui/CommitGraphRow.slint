@@ -1,0 +1,138 @@
+export component CommitGraphRow inherits Rectangle {
+    in property <int> lane: 0;
+    in property <int> parent-lane: 0;
+    in property <bool> has-parent: false;
+
+    in property <int> lane-spacing: 16;
+    in property <int> graph-left: 18;
+
+    height: 42px;
+    background: transparent;
+
+    property <length> current-x:
+        root.graph-left * 1px
+        + root.lane * root.lane-spacing * 1px;
+
+    property <length> parent-x:
+        root.graph-left * 1px
+        + root.parent-lane * root.lane-spacing * 1px;
+
+    // ------------------------------------------------------------
+    // Same-lane connection
+    //
+    // The commit continues straight downward.
+    // ------------------------------------------------------------
+
+    Rectangle {
+        visible:
+            root.has-parent &&
+            root.lane == root.parent-lane;
+
+        width: 3px;
+
+        x:
+            root.current-x - 1.5px;
+
+        y:
+            root.height / 2;
+
+        height:
+            root.height / 2 + 1px;
+
+        background: #a0a0a0;
+    }
+
+    // ------------------------------------------------------------
+    // Different-lane: leave current lane
+    // ------------------------------------------------------------
+
+    Rectangle {
+        visible:
+            root.has-parent &&
+            root.lane != root.parent-lane;
+
+        width: 3px;
+
+        x:
+            root.current-x - 1.5px;
+
+        y:
+            root.height / 2;
+
+        height:
+            root.height / 4;
+
+        background: #a0a0a0;
+    }
+
+    // ------------------------------------------------------------
+    // Different-lane: horizontal transition
+    // ------------------------------------------------------------
+
+    Rectangle {
+        visible:
+            root.has-parent &&
+            root.lane != root.parent-lane;
+
+        width:
+            root.parent-x > root.current-x
+                ? root.parent-x - root.current-x + 3px
+                : root.current-x - root.parent-x + 3px;
+
+        height: 3px;
+
+        x:
+            root.parent-x < root.current-x
+                ? root.parent-x - 1.5px
+                : root.current-x - 1.5px;
+
+        y:
+            root.height * 3 / 4;
+
+        background: #a0a0a0;
+    }
+
+    // ------------------------------------------------------------
+    // Different-lane: enter parent lane
+    // ------------------------------------------------------------
+
+    Rectangle {
+        visible:
+            root.has-parent &&
+            root.lane != root.parent-lane;
+
+        width: 3px;
+
+        x:
+            root.parent-x - 1.5px;
+
+        y:
+            root.height * 3 / 4;
+
+        height:
+            root.height / 4 + 1px;
+
+        background: #a0a0a0;
+    }
+
+    // ------------------------------------------------------------
+    // Commit node
+    //
+    // Draw this last so the line doesn't cover the node.
+    // ------------------------------------------------------------
+
+    Rectangle {
+        width: 10px;
+        height: 10px;
+
+        x:
+            root.current-x - 5px;
+
+        y:
+            (root.height - self.height) / 2;
+
+        border-radius: 5px;
+
+        background: #4a4a4a;
+    }
+}
