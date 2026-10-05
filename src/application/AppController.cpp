@@ -148,6 +148,24 @@ void AppController::connectSignals()
         {
             closeOperationDialog();
         });
+
+    m_window->on_fetch(
+        [this]()
+        {
+            fetch();
+        });
+
+    m_window->on_pull(
+        [this]()
+        {
+            pull();
+        });
+    
+    m_window->on_push(
+        [this]()
+        {
+            push();
+        });
 }
 
 
@@ -1155,6 +1173,387 @@ void AppController::pollCheckout()
             slint::SharedString(
                 std::string(
                     "Failed to switch branch: ") +
+                e.what()));
+    }
+}
+
+void AppController::fetch()
+{
+    if (!m_repository)
+    {
+        return;
+    }
+
+    if (m_fetchTask.valid() &&
+        m_fetchTask.wait_for(
+            std::chrono::milliseconds(0)) !=
+        std::future_status::ready)
+    {
+        return;
+    }
+
+    startFetch();
+}
+
+void AppController::startFetch()
+{
+    if (!m_repository)
+    {
+        return;
+    }
+
+    const std::filesystem::path repositoryPath =
+        m_repository->workingDirectory();
+
+    startOperation(
+        "Fetch",
+        "git fetch");
+
+    std::shared_ptr<OperationLog> operationLog =
+        m_operationLog;
+
+    m_fetchTask =
+        m_scheduler.submit(
+            [repositoryPath,
+             operationLog]()
+            {
+                GitRepository repository(
+                    repositoryPath);
+
+                return repository.fetchStreaming(
+                    [operationLog](
+                        bool isError,
+                        const std::string& text)
+                    {
+                        operationLog->append(
+                            isError,
+                            text);
+                    });
+            });
+
+    m_repositoryTimer.stop();
+
+    m_repositoryTimer.start(
+        slint::TimerMode::Repeated,
+        std::chrono::milliseconds(50),
+        [this]()
+        {
+            pollFetch();
+        });
+}
+
+void AppController::pollFetch()
+{
+    if (!m_fetchTask.valid())
+    {
+        m_repositoryTimer.stop();
+        return;
+    }
+
+    if (m_fetchTask.wait_for(
+            std::chrono::milliseconds(0)) !=
+        std::future_status::ready)
+    {
+        return;
+    }
+
+    m_repositoryTimer.stop();
+
+    try
+    {
+        const int exitCode =
+            m_fetchTask.get();
+
+        if (exitCode == 0)
+        {
+            finishOperation(
+                true,
+                0);
+
+            startStatusRefresh();
+        }
+        else
+        {
+            finishOperation(
+                false,
+                exitCode);
+
+            m_window->set_status_text(
+                slint::SharedString(
+                    "Failed to fetch."));
+        }
+    }
+    catch (const std::exception& e)
+    {
+        appendOperationLog(
+            true,
+            e.what());
+
+        finishOperation(
+            false,
+            1);
+
+        m_window->set_status_text(
+            slint::SharedString(
+                std::string(
+                    "Failed to fetch: ") +
+                e.what()));
+    }
+}
+
+void AppController::pull()
+{
+    if (!m_repository)
+    {
+        return;
+    }
+
+    if (m_pullTask.valid() &&
+        m_pullTask.wait_for(
+            std::chrono::milliseconds(0)) !=
+        std::future_status::ready)
+    {
+        return;
+    }
+
+    startPull();
+}
+
+void AppController::startPull()
+{
+    if (!m_repository)
+    {
+        return;
+    }
+
+    const std::filesystem::path repositoryPath =
+        m_repository->workingDirectory();
+
+    startOperation(
+        "Pull",
+        "git pull");
+
+    std::shared_ptr<OperationLog> operationLog =
+        m_operationLog;
+
+    m_pullTask =
+        m_scheduler.submit(
+            [repositoryPath,
+             operationLog]()
+            {
+                GitRepository repository(
+                    repositoryPath);
+
+                return repository.pullStreaming(
+                    [operationLog](
+                        bool isError,
+                        const std::string& text)
+                    {
+                        operationLog->append(
+                            isError,
+                            text);
+                    });
+            });
+
+    m_repositoryTimer.stop();
+
+    m_repositoryTimer.start(
+        slint::TimerMode::Repeated,
+        std::chrono::milliseconds(50),
+        [this]()
+        {
+            pollPull();
+        });
+}
+
+void AppController::pollPull()
+{
+    if (!m_pullTask.valid())
+    {
+        m_repositoryTimer.stop();
+        return;
+    }
+
+    if (m_pullTask.wait_for(
+            std::chrono::milliseconds(0)) !=
+        std::future_status::ready)
+    {
+        return;
+    }
+
+    m_repositoryTimer.stop();
+
+    try
+    {
+        const int exitCode =
+            m_pullTask.get();
+
+        if (exitCode == 0)
+        {
+            finishOperation(
+                true,
+                0);
+
+            m_window->set_diff_lines(
+                std::make_shared<
+                    slint::VectorModel<
+                        slint::SharedString>>());
+
+            m_window->set_diff_line_types(
+                std::make_shared<
+                    slint::VectorModel<int>>());
+
+            startStatusRefresh();
+        }
+        else
+        {
+            finishOperation(
+                false,
+                exitCode);
+
+            m_window->set_status_text(
+                slint::SharedString(
+                    "Failed to pull."));
+        }
+    }
+    catch (const std::exception& e)
+    {
+        appendOperationLog(
+            true,
+            e.what());
+
+        finishOperation(
+            false,
+            1);
+
+        m_window->set_status_text(
+            slint::SharedString(
+                std::string(
+                    "Failed to pull: ") +
+                e.what()));
+    }
+}
+
+void AppController::push()
+{
+    if (!m_repository)
+    {
+        return;
+    }
+
+    if (m_pushTask.valid() &&
+        m_pushTask.wait_for(
+            std::chrono::milliseconds(0)) !=
+        std::future_status::ready)
+    {
+        return;
+    }
+
+    startPush();
+}
+
+void AppController::startPush()
+{
+    if (!m_repository)
+    {
+        return;
+    }
+
+    const std::filesystem::path repositoryPath =
+        m_repository->workingDirectory();
+
+    startOperation(
+        "Push",
+        "git push");
+
+    std::shared_ptr<OperationLog> operationLog =
+        m_operationLog;
+
+    m_pushTask =
+        m_scheduler.submit(
+            [repositoryPath,
+             operationLog]()
+            {
+                GitRepository repository(
+                    repositoryPath);
+
+                return repository.pushStreaming(
+                    [operationLog](
+                        bool isError,
+                        const std::string& text)
+                    {
+                        operationLog->append(
+                            isError,
+                            text);
+                    });
+            });
+
+    m_repositoryTimer.stop();
+
+    m_repositoryTimer.start(
+        slint::TimerMode::Repeated,
+        std::chrono::milliseconds(50),
+        [this]()
+        {
+            pollPush();
+        });
+}
+
+void AppController::pollPush()
+{
+    if (!m_pushTask.valid())
+    {
+        m_repositoryTimer.stop();
+        return;
+    }
+
+    if (m_pushTask.wait_for(
+            std::chrono::milliseconds(0)) !=
+        std::future_status::ready)
+    {
+        return;
+    }
+
+    m_repositoryTimer.stop();
+
+    try
+    {
+        const int exitCode =
+            m_pushTask.get();
+
+        if (exitCode == 0)
+        {
+            finishOperation(
+                true,
+                0);
+
+            startStatusRefresh();
+        }
+        else
+        {
+            finishOperation(
+                false,
+                exitCode);
+
+            m_window->set_status_text(
+                slint::SharedString(
+                    "Failed to push."));
+        }
+    }
+    catch (const std::exception& e)
+    {
+        appendOperationLog(
+            true,
+            e.what());
+
+        finishOperation(
+            false,
+            1);
+
+        m_window->set_status_text(
+            slint::SharedString(
+                std::string(
+                    "Failed to push: ") +
                 e.what()));
     }
 }

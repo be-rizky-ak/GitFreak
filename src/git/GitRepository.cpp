@@ -1,6 +1,7 @@
 #include "GitRepository.h"
 
 #include "GitHistoryParser.h"
+#include "GitRemoteParser.h"
 #include "GitStatusParser.h"
 
 #include <array>
@@ -410,4 +411,71 @@ void GitRepository::checkoutStreaming(
         throw std::runtime_error(
             "git switch failed.");
     }
+}
+
+std::vector<Remote>
+GitRepository::remotes() const
+{
+    const std::array<std::string, 2> arguments =
+    {
+        "remote",
+        "-v"
+    };
+
+    GitCommandResult result =
+        m_gitProcess.execute(
+            m_workingDirectory,
+            arguments);
+
+    if (result.exitCode != 0)
+    {
+        throw std::runtime_error(
+            "git remote failed: " +
+            result.stderrText);
+    }
+
+    return GitRemoteParser::parse(
+        result.stdoutText);
+}
+
+int GitRepository::fetchStreaming(
+    const GitOutputCallback& outputCallback) const
+{
+    const std::array<std::string, 1> arguments =
+    {
+        "fetch"
+    };
+
+    return m_gitProcess.executeStreaming(
+        m_workingDirectory,
+        arguments,
+        outputCallback);
+}
+
+int GitRepository::pullStreaming(
+    const GitOutputCallback& outputCallback) const
+{
+    const std::array<std::string, 1> arguments =
+    {
+        "pull"
+    };
+
+    return m_gitProcess.executeStreaming(
+        m_workingDirectory,
+        arguments,
+        outputCallback);
+}
+
+int GitRepository::pushStreaming(
+    const GitOutputCallback& outputCallback) const
+{
+    const std::array<std::string, 1> arguments =
+    {
+        "push"
+    };
+
+    return m_gitProcess.executeStreaming(
+        m_workingDirectory,
+        arguments,
+        outputCallback);
 }

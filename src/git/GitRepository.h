@@ -4,6 +4,7 @@
 #include "../models/Branch.h"
 #include "../models/Commit.h"
 #include "../models/Diff.h"
+#include "../models/Remote.h"
 #include "../models/RepositoryStatus.h"
 
 #include <filesystem>
@@ -44,9 +45,18 @@ public:
 
     std::vector<Branch> branches() const;
 
+    std::vector<Remote> remotes() const;
+
     void checkout(const std::string& branchName) const;
     void checkoutStreaming(
         const std::string& branchName,
+        const GitOutputCallback& outputCallback) const;
+
+    int fetchStreaming(
+        const GitOutputCallback& outputCallback) const;
+    int pullStreaming(
+        const GitOutputCallback& outputCallback) const;
+    int pushStreaming(
         const GitOutputCallback& outputCallback) const;
 
     GitCommandResult revParse(

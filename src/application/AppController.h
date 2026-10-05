@@ -62,6 +62,18 @@ private:
         const std::string& branchName);
     void pollCheckout();
 
+    void fetch();
+    void startFetch();
+    void pollFetch();
+
+    void pull();
+    void startPull();
+    void pollPull();
+
+    void push();
+    void startPush();
+    void pollPush();
+
     void updateHistoryGraph(
         const std::vector<Commit>& commits);
 
@@ -96,6 +108,9 @@ private:
     std::future<std::vector<Branch>> m_branchTask;
     std::future<void> m_checkoutTask;
     std::vector<Branch> m_branches;
+    std::future<int> m_fetchTask;
+    std::future<int> m_pullTask;
+    std::future<int> m_pushTask;
 
     std::shared_ptr<OperationLog> m_operationLog;
     OperationState m_operationState;

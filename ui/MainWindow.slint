@@ -46,6 +46,9 @@ export component MainWindow inherits Window {
     callback commit(string);
     callback select-file(int);
     callback checkout-branch(int);
+    callback fetch();
+    callback pull();
+    callback push();
 
     VerticalLayout {
         padding: 20px;
@@ -66,6 +69,30 @@ export component MainWindow inherits Window {
 
                 clicked => {
                     root.open-repository();
+                }
+            }
+
+            Button {
+                text: "Fetch";
+
+                clicked => {
+                    root.fetch();
+                }
+            }
+
+            Button {
+                text: "Pull";
+
+                clicked => {
+                    root.pull();
+                }
+            }
+
+            Button {
+                text: "Push";
+
+                clicked => {
+                    root.push();
                 }
             }
         }

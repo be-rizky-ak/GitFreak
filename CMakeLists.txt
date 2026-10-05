@@ -25,6 +25,8 @@ add_executable(GitFreak
     src/git/GitProcess.h
     src/git/GitRepository.cpp
     src/git/GitRepository.h
+    src/git/GitRemoteParser.cpp
+    src/git/GitRemoteParser.h
     src/git/GitStatusParser.cpp
     src/git/GitStatusParser.h
     
@@ -36,6 +38,7 @@ add_executable(GitFreak
     src/models/OperationLog.cpp
     src/models/OperationLog.h
     src/models/OperationState.h
+    src/models/Remote.h
     src/models/RepositoryStatus.h
 
     src/tasks/TaskScheduler.cpp
