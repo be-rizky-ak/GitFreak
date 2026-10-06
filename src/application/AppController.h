@@ -9,6 +9,7 @@
 #include "../models/OperationLog.h"
 #include "../models/OperationState.h"
 #include "../models/RepositoryStatus.h"
+#include "../platform/FileWatcher.h"
 
 #include <filesystem>
 #include <future>
@@ -81,35 +82,44 @@ private:
     void showCloneDialog();
     void browseCloneDestination();
 
+    void startFileWatcher();
+    void stopFileWatcher();
+    void scheduleFileRefresh();
+
     slint::ComponentHandle<MainWindow> m_window;
 
     TaskScheduler& m_scheduler;
 
     std::unique_ptr<GitRepository> m_repository;
+    std::unique_ptr<FileWatcher> m_fileWatcher;
 
     std::future<std::optional<std::filesystem::path>> m_openRepositoryTask;
-
     std::future<RepositoryStatus> m_statusTask;
-    RepositoryStatus m_repositoryStatus;
     std::future<void> m_fileOperationTask;
-    std::vector<std::filesystem::path> m_fileOrder;
     std::future<void> m_commitTask;
     std::future<std::vector<Commit>> m_historyTask;
     std::future<Diff> m_diffTask;
     std::future<std::vector<Branch>> m_branchTask;
     std::future<void> m_checkoutTask;
-    std::vector<Branch> m_branches;
     std::future<int> m_fetchTask;
     std::future<int> m_pullTask;
     std::future<int> m_pushTask;
     std::future<int> m_cloneTask;
 
-    std::shared_ptr<OperationLog> m_operationLog;
-    OperationState m_operationState;
-
     slint::Timer m_repositoryTimer;
     slint::Timer m_operationTimer;
+    slint::Timer m_fileRefreshTimer;
+
+    std::vector<std::filesystem::path> m_fileOrder;
     std::vector<std::string> m_operationLines;
+    std::vector<Branch> m_branches;
+
+    std::shared_ptr<OperationLog> m_operationLog;
+
+    RepositoryStatus m_repositoryStatus;
+    OperationState m_operationState;
     std::string m_operationPendingText;
     std::filesystem::path m_cloneDestination;
+
+    bool m_gitOperationRunning = false;
 };

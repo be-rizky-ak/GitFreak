@@ -84,12 +84,14 @@ AppController::AppController(
     : m_window(window), m_scheduler(scheduler)
 {
     m_operationLog = std::make_shared<OperationLog>();
+    m_fileWatcher = std::make_unique<FileWatcher>();
     connectSignals();
 }
 
 AppController::~AppController()
 {
     m_repositoryTimer.stop();
+    stopFileWatcher();
 }
 
 void AppController::connectSignals()
@@ -191,12 +193,15 @@ void AppController::pollRepositoryOpen()
             return;
         }
 
+        stopFileWatcher();
+
         m_repository = std::make_unique<GitRepository>(*root);
 
         m_window->set_repository_path(slint::SharedString(root->string()));
 
         m_window->set_status_text("Loading working tree...");
 
+        startFileWatcher();
         startStatusRefresh();
     }
     catch (const std::exception& e)
@@ -1219,6 +1224,7 @@ void AppController::pollClone()
             // Open the newly cloned repository.
             m_repository = std::make_unique<GitRepository>(m_cloneDestination);
 
+            startFileWatcher();
             // Continue using the existing
             // repository refresh pipeline.
             startStatusRefresh();
@@ -1413,9 +1419,13 @@ void AppController::pollOperationLog()
 
 void AppController::startOperation(const std::string& title, const std::string& command)
 {
+    m_gitOperationRunning = true;
+
     m_operationLog = std::make_shared<OperationLog>();
 
     m_operationState = OperationState{};
+
+    m_fileRefreshTimer.stop();
 
     m_operationState.status = OperationStatus::Running;
 
@@ -1447,6 +1457,8 @@ void AppController::startOperation(const std::string& title, const std::string& 
 
 void AppController::finishOperation(bool success, int exitCode)
 {
+    m_gitOperationRunning = false;
+
     m_operationState.status = success ? OperationStatus::Success : OperationStatus::Failed;
 
     m_operationState.exitCode = exitCode;
@@ -1485,4 +1497,45 @@ void AppController::browseCloneDestination()
     }
 
     m_window->set_clone_dialog_destination(slint::SharedString(folder->string()));
+}
+
+void AppController::startFileWatcher()
+{
+    stopFileWatcher();
+
+    if (!m_repository)
+    {
+        return;
+    }
+
+    const std::filesystem::path repositoryPath = m_repository->workingDirectory();
+
+    m_fileWatcher->start(repositoryPath, [this](const std::filesystem::path&)
+    { slint::invoke_from_event_loop([this]() { scheduleFileRefresh(); }); });
+}
+
+void AppController::stopFileWatcher()
+{
+    if (m_fileWatcher)
+    {
+        m_fileWatcher->stop();
+    }
+}
+
+void AppController::scheduleFileRefresh()
+{
+    if (m_gitOperationRunning)
+        return;
+
+    m_fileRefreshTimer.stop();
+
+    m_fileRefreshTimer.start(slint::TimerMode::SingleShot, std::chrono::milliseconds(200), [this]()
+    {
+        if (!m_repository)
+        {
+            return;
+        }
+
+        startStatusRefresh();
+    });
 }

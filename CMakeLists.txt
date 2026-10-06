@@ -44,6 +44,8 @@ add_executable(GitFreak
     src/tasks/TaskScheduler.cpp
     src/tasks/TaskScheduler.h
 
+    src/platform/FileWatcher.cpp
+    src/platform/FileWatcher.h
     src/platform/NativeDialogs.cpp
     src/platform/NativeDialogs.h
 )
