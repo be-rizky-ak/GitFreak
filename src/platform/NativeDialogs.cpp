@@ -1,15 +1,11 @@
 #include "NativeDialogs.h"
 
-#include <windows.h>
 #include <shobjidl.h>
+#include <windows.h>
 
-std::optional<std::filesystem::path>
-NativeDialogs::pickFolder()
+std::optional<std::filesystem::path> NativeDialogs::pickFolder()
 {
-    HRESULT result = CoInitializeEx(
-        nullptr,
-        COINIT_APARTMENTTHREADED |
-        COINIT_DISABLE_OLE1DDE);
+    HRESULT result = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
 
     bool shouldUninitialize = SUCCEEDED(result);
 
@@ -21,10 +17,7 @@ NativeDialogs::pickFolder()
     IFileDialog* dialog = nullptr;
 
     result = CoCreateInstance(
-        CLSID_FileOpenDialog,
-        nullptr,
-        CLSCTX_INPROC_SERVER,
-        IID_PPV_ARGS(&dialog));
+        CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&dialog));
 
     if (FAILED(result))
     {
@@ -42,11 +35,8 @@ NativeDialogs::pickFolder()
 
     if (SUCCEEDED(result))
     {
-        result = dialog->SetOptions(
-            options |
-            FOS_PICKFOLDERS |
-            FOS_FORCEFILESYSTEM |
-            FOS_PATHMUSTEXIST);
+        result =
+            dialog->SetOptions(options | FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM | FOS_PATHMUSTEXIST);
     }
 
     if (SUCCEEDED(result))
@@ -85,9 +75,7 @@ NativeDialogs::pickFolder()
 
     PWSTR path = nullptr;
 
-    result = item->GetDisplayName(
-        SIGDN_FILESYSPATH,
-        &path);
+    result = item->GetDisplayName(SIGDN_FILESYSPATH, &path);
 
     item->Release();
 

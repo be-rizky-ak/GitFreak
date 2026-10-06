@@ -154,7 +154,7 @@ export component MainWindow inherits Window {
                         ListView {
                             vertical-stretch: 1;
 
-                            for branch[index] in root.branch-names : Rectangle {
+                            for branch[index] in root.branch-names: Rectangle {
                                 height: 28px;
                                 width: parent.width;
 
@@ -228,7 +228,6 @@ export component MainWindow inherits Window {
                         }
 
                         // 3. Scrollable Changes ListView
-
                         ListView {
                             vertical-stretch: 1;
 
@@ -264,7 +263,7 @@ export component MainWindow inherits Window {
                                         width: 80px;
 
                                         visible: !root.changed-files-staged[index] ||
-                                                 root.changed-files-unstaged[index];
+                                            root.changed-files-unstaged[index];
 
                                         clicked => {
                                             root.stage-file(index);
@@ -307,7 +306,7 @@ export component MainWindow inherits Window {
                             text: "Commit";
 
                             enabled: root.staged-file-count > 0 &&
-                                     commit_message.text != "";
+                                commit_message.text != "";
 
                             clicked => {
                                 root.commit(commit_message.text);
@@ -318,90 +317,83 @@ export component MainWindow inherits Window {
                 }
             }
 
-        // RIGHT: Diff
+            // RIGHT: Diff
         Rectangle {
-            horizontal-stretch: 2;
-            background: #ffffff;
-            border-radius: 4px;
-            border-width: 1px;
-            border-color: #d0d0d0;
+                horizontal-stretch: 2;
+                background: #ffffff;
+                border-radius: 4px;
+                border-width: 1px;
+                border-color: #d0d0d0;
 
-            VerticalLayout {
-                padding: 8px;
+                VerticalLayout {
+                    padding: 8px;
                     spacing: 8px;
 
-                Text {
-                    text: "Diff";
-                    font-size: 20px;
-                }
+                    Text {
+                        text: "Diff";
+                        font-size: 20px;
+                    }
 
-                Flickable {
-                    vertical-stretch: 1;
+                    Flickable {
+                        vertical-stretch: 1;
 
-                    content-width: self.width;
-                    content-height: root.diff-lines.length * 20px;
+                        content-width: self.width;
+                        content-height: root.diff-lines.length * 20px;
 
-                    VerticalLayout {
-                        width: parent.width;
+                        VerticalLayout {
+                            width: parent.width;
 
-                        for line[index] in root.diff-lines : Rectangle {
-                            height: 20px;
+                            for line[index] in root.diff-lines: Rectangle {
+                                height: 20px;
 
-                            background: {
-                                if (root.diff-line-types[index] == 1) {
-                                    return #e8f5e9;
-                                }
-
-                                if (root.diff-line-types[index] == 2) {
-                                    return #ffebee;
-                                }
-
-                                if (root.diff-line-types[index] == 3) {
-                                    return #f5f5f5;
-                                }
-
-                                if (root.diff-line-types[index] == 4) {
-                                    return #e3f2fd;
-                                }
-
-                                return transparent;
-                            }
-
-                            Text {
-                                text: line;
-                                x: 8px;
-                                y: 0px;
-                                width: parent.width - 16px;
-                                height: parent.height;
-
-                                font-size: 13px;
-                                font-family: "Consolas";
-
-                                color: {
+                                background: {
                                     if (root.diff-line-types[index] == 1) {
-                                        return #2e7d32;
+                                        return #e8f5e9;
                                     }
-
                                     if (root.diff-line-types[index] == 2) {
-                                        return #c62828;
+                                        return #ffebee;
                                     }
-
+                                    if (root.diff-line-types[index] == 3) {
+                                        return #f5f5f5;
+                                    }
                                     if (root.diff-line-types[index] == 4) {
-                                        return #1565c0;
+                                        return #e3f2fd;
                                     }
-
-                                    return #252525;
+                                    return transparent;
                                 }
 
-                                vertical-alignment: center;
-                                overflow: elide;
+                                Text {
+                                    text: line;
+                                    x: 8px;
+                                    y: 0px;
+                                    width: parent.width - 16px;
+                                    height: parent.height;
+
+                                    font-size: 13px;
+                                    font-family: "Consolas";
+
+                                    color: {
+                                        if (root.diff-line-types[index] == 1) {
+                                            return #2e7d32;
+                                        }
+                                        if (root.diff-line-types[index] == 2) {
+                                            return #c62828;
+                                        }
+                                        if (root.diff-line-types[index] == 4) {
+                                            return #1565c0;
+                                        }
+                                        return #252525;
+                                    }
+
+                                    vertical-alignment: center;
+                                    overflow: elide;
+                                }
                             }
                         }
                     }
                 }
             }
         }
-    }
 
         Rectangle {
             height: 220px;
@@ -423,7 +415,7 @@ export component MainWindow inherits Window {
                 ListView {
                     vertical-stretch: 1;
 
-                    for commit[index] in root.history-commits : Rectangle {
+                    for commit[index] in root.history-commits: Rectangle {
                         height: 42px;
 
                         HorizontalLayout {
@@ -433,26 +425,19 @@ export component MainWindow inherits Window {
                                 width: 120px;
                                 height: parent.height;
 
-                                lane:
-                                    root.history-lanes[index];
+                                lane: root.history-lanes[index];
 
-                                parent-lane-0:
-                                    root.history-parent-lanes[index];
+                                parent-lane-0: root.history-parent-lanes[index];
 
-                                parent-lane-1:
-                                    root.history-parent-lanes-1[index];
+                                parent-lane-1: root.history-parent-lanes-1[index];
 
-                                parent-count:
-                                    root.history-parent-counts[index];
+                                parent-count: root.history-parent-counts[index];
 
-                                active-lane-0:
-                                    root.history-active-lanes-0[index];
+                                active-lane-0: root.history-active-lanes-0[index];
 
-                                active-lane-1:
-                                    root.history-active-lanes-1[index];
+                                active-lane-1: root.history-active-lanes-1[index];
 
-                                active-lane-count:
-                                    root.history-active-lane-counts[index];
+                                active-lane-count: root.history-active-lane-counts[index];
                             }
 
                             VerticalLayout {
@@ -467,8 +452,7 @@ export component MainWindow inherits Window {
                                 }
 
                                 Text {
-                                    text:
-                                        root.history-details[index];
+                                    text: root.history-details[index];
 
                                     font-size: 12px;
                                     color: #808080;
@@ -519,7 +503,7 @@ export component MainWindow inherits Window {
         }
     }
 
-    if root.clone-dialog-visible : Rectangle {
+    if root.clone-dialog-visible: Rectangle {
         background: #00000040;
 
         CloneDialog {
@@ -536,8 +520,7 @@ export component MainWindow inherits Window {
             clone(url, destination) => {
                 root.clone-dialog-clone(
                     url,
-                    destination
-                );
+                    destination);
             }
 
             browse-destination => {

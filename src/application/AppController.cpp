@@ -16,84 +16,72 @@
 namespace
 {
 
-std::vector<std::string> splitDiffLines(
-    const std::string& text)
-{
-    std::vector<std::string> lines;
-
-    std::size_t start = 0;
-
-    while (start < text.size())
+    std::vector<std::string> splitDiffLines(const std::string& text)
     {
-        std::size_t end =
-            text.find('\n', start);
+        std::vector<std::string> lines;
 
-        if (end == std::string::npos)
+        std::size_t start = 0;
+
+        while (start < text.size())
         {
-            end = text.size();
+            std::size_t end = text.find('\n', start);
+
+            if (end == std::string::npos)
+            {
+                end = text.size();
+            }
+
+            std::string line = text.substr(start, end - start);
+
+            if (!line.empty() && line.back() == '\r')
+            {
+                line.pop_back();
+            }
+
+            lines.push_back(std::move(line));
+
+            if (end == text.size())
+            {
+                break;
+            }
+
+            start = end + 1;
         }
 
-        std::string line =
-            text.substr(start, end - start);
+        return lines;
+    }
 
-        if (!line.empty() &&
-            line.back() == '\r')
+    int getDiffLineType(const std::string& line)
+    {
+        if (line.rfind("diff --git", 0) == 0 || line.rfind("index ", 0) == 0 ||
+            line.rfind("--- ", 0) == 0 || line.rfind("+++ ", 0) == 0)
         {
-            line.pop_back();
+            return 3;
         }
 
-        lines.push_back(
-            std::move(line));
-
-        if (end == text.size())
+        if (line.rfind("@@", 0) == 0)
         {
-            break;
+            return 4;
         }
 
-        start = end + 1;
+        if (!line.empty() && line[0] == '+')
+        {
+            return 1;
+        }
+
+        if (!line.empty() && line[0] == '-')
+        {
+            return 2;
+        }
+
+        return 0;
     }
 
-    return lines;
-}
-
-int getDiffLineType(
-    const std::string& line)
-{
-    if (line.rfind("diff --git", 0) == 0 ||
-        line.rfind("index ", 0) == 0 ||
-        line.rfind("--- ", 0) == 0 ||
-        line.rfind("+++ ", 0) == 0)
-    {
-        return 3;
-    }
-
-    if (line.rfind("@@", 0) == 0)
-    {
-        return 4;
-    }
-
-    if (!line.empty() &&
-        line[0] == '+')
-    {
-        return 1;
-    }
-
-    if (!line.empty() &&
-        line[0] == '-')
-    {
-        return 2;
-    }
-
-    return 0;
-}
-
-}
+} // namespace
 
 AppController::AppController(
-    const slint::ComponentHandle<MainWindow>& window,
-    TaskScheduler& scheduler)
-    : m_window(window)
-    , m_scheduler(scheduler)
+    const slint::ComponentHandle<MainWindow>& window, TaskScheduler& scheduler)
+    : m_window(window), m_scheduler(scheduler)
 {
     m_operationLog = std::make_shared<OperationLog>();
     connectSignals();
@@ -106,106 +94,45 @@ AppController::~AppController()
 
 void AppController::connectSignals()
 {
-    m_window->on_open_repository(
-        [this]
-        {
-            openRepository();
-        });
+    m_window->on_open_repository([this] { openRepository(); });
 
-    m_window->on_stage_file(
-        [this](int index)
-        {
-            stageFile(index);
-        });
+    m_window->on_stage_file([this](int index) { stageFile(index); });
 
-    m_window->on_unstage_file(
-        [this](int index)
-        {
-            unstageFile(index);
-        });
+    m_window->on_unstage_file([this](int index) { unstageFile(index); });
 
     m_window->on_commit(
-        [this](const slint::SharedString& message)
-        {
-            commit(
-                std::string(message));
-        });
+        [this](const slint::SharedString& message) { commit(std::string(message)); });
 
-    m_window->on_select_file(
-        [this](int index)
-        {
-            selectFile(index);
-        });
+    m_window->on_select_file([this](int index) { selectFile(index); });
 
-    m_window->on_checkout_branch(
-        [this](int index)
-        {
-            checkoutBranch(index);
-        });
+    m_window->on_checkout_branch([this](int index) { checkoutBranch(index); });
 
-    m_window->on_close_operation_dialog(
-        [this]()
-        {
-            closeOperationDialog();
-        });
+    m_window->on_close_operation_dialog([this]() { closeOperationDialog(); });
 
-    m_window->on_fetch(
-        [this]()
-        {
-            fetch();
-        });
+    m_window->on_fetch([this]() { fetch(); });
 
-    m_window->on_pull(
-        [this]()
-        {
-            pull();
-        });
-    
-    m_window->on_push(
-        [this]()
-        {
-            push();
-        });
+    m_window->on_pull([this]() { pull(); });
 
-    m_window->on_clone_dialog_cancel(
-        [this]()
-        {
-            m_window->set_clone_dialog_visible(
-                false);
-        });
+    m_window->on_push([this]() { push(); });
+
+    m_window->on_clone_dialog_cancel([this]() { m_window->set_clone_dialog_visible(false); });
 
     m_window->on_clone_dialog_clone(
-        [this](
-            const slint::SharedString& url,
-            const slint::SharedString& destination)
-        {
-            m_window->set_clone_dialog_visible(
-                false);
+        [this](const slint::SharedString& url, const slint::SharedString& destination)
+    {
+        m_window->set_clone_dialog_visible(false);
 
-            cloneRepository(
-                std::string(url),
-                std::filesystem::path(
-                    std::string(destination)));
-        });
-    
-    m_window->on_clone_dialog_browse(
-        [this]()
-        {
-            browseCloneDestination();
-        });
+        cloneRepository(std::string(url), std::filesystem::path(std::string(destination)));
+    });
 
-    m_window->on_clone(
-        [this]()
-        {
-            showCloneDialog();
-        });
+    m_window->on_clone_dialog_browse([this]() { browseCloneDestination(); });
+
+    m_window->on_clone([this]() { showCloneDialog(); });
 }
-
 
 void AppController::openRepository()
 {
-    auto selectedPath =
-        NativeDialogs::pickFolder();
+    auto selectedPath = NativeDialogs::pickFolder();
 
     if (!selectedPath)
     {
@@ -218,30 +145,20 @@ void AppController::openRepository()
 
     m_window->set_changed_files({});
     m_window->set_staged_file_count(0);
-    m_window->set_status_text(
-        "Opening repository...");
+    m_window->set_status_text("Opening repository...");
 
-    m_window->set_repository_path(
-        slint::SharedString(
-            selectedPath->string()));
+    m_window->set_repository_path(slint::SharedString(selectedPath->string()));
 
     m_openRepositoryTask =
-        m_scheduler.submit(
-            [path = *selectedPath]()
-                -> std::optional<std::filesystem::path>
-            {
-                GitRepository repository(path);
+        m_scheduler.submit([path = *selectedPath]() -> std::optional<std::filesystem::path>
+    {
+        GitRepository repository(path);
 
-                return repository.findRoot();
-            });
+        return repository.findRoot();
+    });
 
-    m_repositoryTimer.start(
-        slint::TimerMode::Repeated,
-        std::chrono::milliseconds(50),
-        [this]()
-        {
-            pollRepositoryOpen();
-        });
+    m_repositoryTimer.start(slint::TimerMode::Repeated, std::chrono::milliseconds(50),
+        [this]() { pollRepositoryOpen(); });
 }
 
 void AppController::pollRepositoryOpen()
@@ -252,9 +169,7 @@ void AppController::pollRepositoryOpen()
         return;
     }
 
-    if (m_openRepositoryTask.wait_for(
-            std::chrono::milliseconds(0)) !=
-        std::future_status::ready)
+    if (m_openRepositoryTask.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
     {
         return;
     }
@@ -271,20 +186,16 @@ void AppController::pollRepositoryOpen()
 
             m_window->set_repository_path("");
             m_window->set_changed_files({});
-            m_window->set_status_text(
-                "Selected folder is not a Git repository.");
+            m_window->set_status_text("Selected folder is not a Git repository.");
 
             return;
         }
 
-        m_repository =
-            std::make_unique<GitRepository>(*root);
+        m_repository = std::make_unique<GitRepository>(*root);
 
-        m_window->set_repository_path(
-            slint::SharedString(root->string()));
+        m_window->set_repository_path(slint::SharedString(root->string()));
 
-        m_window->set_status_text(
-            "Loading working tree...");
+        m_window->set_status_text("Loading working tree...");
 
         startStatusRefresh();
     }
@@ -294,9 +205,7 @@ void AppController::pollRepositoryOpen()
 
         m_window->set_changed_files({});
         m_window->set_status_text(
-            slint::SharedString(
-                std::string("Failed to open repository: ") +
-                e.what()));
+            slint::SharedString(std::string("Failed to open repository: ") + e.what()));
     }
 }
 
@@ -308,9 +217,7 @@ void AppController::pollStatus()
         return;
     }
 
-    if (m_statusTask.wait_for(
-            std::chrono::milliseconds(0)) !=
-        std::future_status::ready)
+    if (m_statusTask.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
     {
         return;
     }
@@ -319,14 +226,11 @@ void AppController::pollStatus()
 
     try
     {
-        RepositoryStatus status =
-            m_statusTask.get();
+        RepositoryStatus status = m_statusTask.get();
 
         std::vector<ChangedFile> orderedFiles;
 
-        orderedFiles.reserve(
-            status.files.size());
-
+        orderedFiles.reserve(status.files.size());
 
         // Keep existing files in their previous UI order.
         for (const auto& previousPath : m_fileOrder)
@@ -340,7 +244,6 @@ void AppController::pollStatus()
                 }
             }
         }
-
 
         // Append newly appearing files.
         for (const ChangedFile& file : status.files)
@@ -363,19 +266,16 @@ void AppController::pollStatus()
         }
 
         m_fileOrder.clear();
-        m_fileOrder.reserve(
-            orderedFiles.size());
+        m_fileOrder.reserve(orderedFiles.size());
 
         for (const ChangedFile& file : orderedFiles)
         {
             m_fileOrder.push_back(file.path);
         }
 
-        status.files =
-            std::move(orderedFiles);
+        status.files = std::move(orderedFiles);
 
-        m_repositoryStatus =
-            status;
+        m_repositoryStatus = status;
 
         std::vector<slint::SharedString> files;
         std::vector<bool> staged;
@@ -387,8 +287,7 @@ void AppController::pollStatus()
 
         int stagedFileCount = 0;
 
-        for (const ChangedFile& file :
-             status.files)
+        for (const ChangedFile& file : status.files)
         {
             std::string prefix;
 
@@ -423,15 +322,12 @@ void AppController::pollStatus()
                 break;
             }
 
-            files.emplace_back(
-                prefix + "  " + file.path.string());
+            files.emplace_back(prefix + "  " + file.path.string());
 
-            staged.push_back(
-                file.staged);
+            staged.push_back(file.staged);
 
-            unstaged.push_back(
-                file.unstaged);
-            
+            unstaged.push_back(file.unstaged);
+
             if (file.staged)
             {
                 ++stagedFileCount;
@@ -439,33 +335,23 @@ void AppController::pollStatus()
         }
 
         m_window->set_changed_files(
-            std::make_shared<
-                slint::VectorModel<slint::SharedString>>(
-                    std::move(files)));
+            std::make_shared<slint::VectorModel<slint::SharedString>>(std::move(files)));
 
         m_window->set_changed_files_staged(
-            std::make_shared<
-                slint::VectorModel<bool>>(
-                    std::move(staged)));
+            std::make_shared<slint::VectorModel<bool>>(std::move(staged)));
 
         m_window->set_changed_files_unstaged(
-            std::make_shared<
-                slint::VectorModel<bool>>(
-                    std::move(unstaged)));
+            std::make_shared<slint::VectorModel<bool>>(std::move(unstaged)));
 
-        m_window->set_staged_file_count(
-            stagedFileCount);
+        m_window->set_staged_file_count(stagedFileCount);
 
         if (status.branch.empty())
         {
-            m_window->set_status_text(
-                "Working tree loaded.");
+            m_window->set_status_text("Working tree loaded.");
         }
         else
         {
-            m_window->set_status_text(
-                slint::SharedString(
-                    "Branch: " + status.branch));
+            m_window->set_status_text(slint::SharedString("Branch: " + status.branch));
         }
 
         startHistoryRefresh();
@@ -475,29 +361,21 @@ void AppController::pollStatus()
         m_window->set_changed_files({});
 
         m_window->set_status_text(
-            slint::SharedString(
-                std::string("Failed to load status: ") +
-                e.what()));
+            slint::SharedString(std::string("Failed to load status: ") + e.what()));
     }
 }
 
 void AppController::stageFile(int index)
 {
-    startFileOperation(
-        index,
-        true);
+    startFileOperation(index, true);
 }
 
 void AppController::unstageFile(int index)
 {
-    startFileOperation(
-        index,
-        false);
+    startFileOperation(index, false);
 }
 
-void AppController::startFileOperation(
-    int index,
-    bool stage)
+void AppController::startFileOperation(int index, bool stage)
 {
     if (!m_repository)
     {
@@ -506,9 +384,7 @@ void AppController::startFileOperation(
 
     if (m_fileOperationTask.valid())
     {
-        if (m_fileOperationTask.wait_for(
-                std::chrono::milliseconds(0)) !=
-            std::future_status::ready)
+        if (m_fileOperationTask.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
         {
             return;
         }
@@ -516,49 +392,35 @@ void AppController::startFileOperation(
         m_fileOperationTask.get();
     }
 
-    if (index < 0 ||
-        static_cast<std::size_t>(index) >=
-            m_repositoryStatus.files.size())
+    if (index < 0 || static_cast<std::size_t>(index) >= m_repositoryStatus.files.size())
     {
         return;
     }
 
-    const std::filesystem::path path =
-        m_repositoryStatus.files[index].path;
+    const std::filesystem::path path = m_repositoryStatus.files[index].path;
 
-    m_window->set_status_text(
-        stage
-            ? "Staging..."
-            : "Unstaging...");
+    m_window->set_status_text(stage ? "Staging..." : "Unstaging...");
 
     const std::filesystem::path repositoryPath = m_repository->workingDirectory();
 
-    m_fileOperationTask =
-        m_scheduler.submit(
-            [repositoryPath, path, stage]()
-            {
-                GitRepository repository(
-                    repositoryPath);
+    m_fileOperationTask = m_scheduler.submit([repositoryPath, path, stage]()
+    {
+        GitRepository repository(repositoryPath);
 
-                if (stage)
-                {
-                    repository.stage(path);
-                }
-                else
-                {
-                    repository.unstage(path);
-                }
-            });
+        if (stage)
+        {
+            repository.stage(path);
+        }
+        else
+        {
+            repository.unstage(path);
+        }
+    });
 
     m_repositoryTimer.stop();
 
-    m_repositoryTimer.start(
-        slint::TimerMode::Repeated,
-        std::chrono::milliseconds(50),
-        [this]()
-        {
-            pollFileOperation();
-        });
+    m_repositoryTimer.start(slint::TimerMode::Repeated, std::chrono::milliseconds(50),
+        [this]() { pollFileOperation(); });
 }
 
 void AppController::pollFileOperation()
@@ -569,9 +431,7 @@ void AppController::pollFileOperation()
         return;
     }
 
-    if (m_fileOperationTask.wait_for(
-            std::chrono::milliseconds(0)) !=
-        std::future_status::ready)
+    if (m_fileOperationTask.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
     {
         return;
     }
@@ -582,17 +442,14 @@ void AppController::pollFileOperation()
     {
         m_fileOperationTask.get();
 
-        m_window->set_status_text(
-            "Refreshing working tree...");
+        m_window->set_status_text("Refreshing working tree...");
 
         startStatusRefresh();
     }
     catch (const std::exception& e)
     {
         m_window->set_status_text(
-            slint::SharedString(
-                std::string("Git operation failed: ") +
-                e.what()));
+            slint::SharedString(std::string("Git operation failed: ") + e.what()));
     }
 }
 
@@ -603,32 +460,22 @@ void AppController::startStatusRefresh()
         return;
     }
 
-    const std::filesystem::path repositoryPath =
-        m_repository->workingDirectory();
+    const std::filesystem::path repositoryPath = m_repository->workingDirectory();
 
-    m_statusTask =
-        m_scheduler.submit(
-            [repositoryPath]()
-            {
-                GitRepository repository(
-                    repositoryPath);
+    m_statusTask = m_scheduler.submit([repositoryPath]()
+    {
+        GitRepository repository(repositoryPath);
 
-                return repository.status();
-            });
+        return repository.status();
+    });
 
     m_repositoryTimer.stop();
 
     m_repositoryTimer.start(
-        slint::TimerMode::Repeated,
-        std::chrono::milliseconds(50),
-        [this]()
-        {
-            pollStatus();
-        });
+        slint::TimerMode::Repeated, std::chrono::milliseconds(50), [this]() { pollStatus(); });
 }
 
-void AppController::commit(
-    const std::string& message)
+void AppController::commit(const std::string& message)
 {
     if (!m_repository)
     {
@@ -647,8 +494,7 @@ void AppController::commit(
 
     int stagedFileCount = 0;
 
-    for (const ChangedFile& file :
-         m_repositoryStatus.files)
+    for (const ChangedFile& file : m_repositoryStatus.files)
     {
         if (file.staged)
         {
@@ -661,32 +507,21 @@ void AppController::commit(
         return;
     }
 
-    const std::filesystem::path repositoryPath =
-        m_repository->workingDirectory();
+    const std::filesystem::path repositoryPath = m_repository->workingDirectory();
 
-    m_window->set_status_text(
-        "Committing...");
+    m_window->set_status_text("Committing...");
 
-    m_commitTask =
-        m_scheduler.submit(
-            [repositoryPath, message]()
-            {
-                GitRepository repository(
-                    repositoryPath);
+    m_commitTask = m_scheduler.submit([repositoryPath, message]()
+    {
+        GitRepository repository(repositoryPath);
 
-                repository.commit(
-                    message);
-            });
+        repository.commit(message);
+    });
 
     m_repositoryTimer.stop();
 
     m_repositoryTimer.start(
-        slint::TimerMode::Repeated,
-        std::chrono::milliseconds(50),
-        [this]()
-        {
-            pollCommit();
-        });
+        slint::TimerMode::Repeated, std::chrono::milliseconds(50), [this]() { pollCommit(); });
 }
 
 void AppController::pollCommit()
@@ -697,9 +532,7 @@ void AppController::pollCommit()
         return;
     }
 
-    if (m_commitTask.wait_for(
-            std::chrono::milliseconds(0)) !=
-        std::future_status::ready)
+    if (m_commitTask.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
     {
         return;
     }
@@ -710,17 +543,13 @@ void AppController::pollCommit()
     {
         m_commitTask.get();
 
-        m_window->set_status_text(
-            "Commit created.");
+        m_window->set_status_text("Commit created.");
 
         startStatusRefresh();
     }
     catch (const std::exception& e)
     {
-        m_window->set_status_text(
-            slint::SharedString(
-                std::string("Commit failed: ") +
-                e.what()));
+        m_window->set_status_text(slint::SharedString(std::string("Commit failed: ") + e.what()));
     }
 }
 
@@ -731,28 +560,19 @@ void AppController::startHistoryRefresh()
         return;
     }
 
-    const std::filesystem::path repositoryPath =
-        m_repository->workingDirectory();
+    const std::filesystem::path repositoryPath = m_repository->workingDirectory();
 
-    m_historyTask =
-        m_scheduler.submit(
-            [repositoryPath]()
-            {
-                GitRepository repository(
-                    repositoryPath);
+    m_historyTask = m_scheduler.submit([repositoryPath]()
+    {
+        GitRepository repository(repositoryPath);
 
-                return repository.history(100);
-            });
+        return repository.history(100);
+    });
 
     m_repositoryTimer.stop();
 
     m_repositoryTimer.start(
-        slint::TimerMode::Repeated,
-        std::chrono::milliseconds(50),
-        [this]()
-        {
-            pollHistory();
-        });
+        slint::TimerMode::Repeated, std::chrono::milliseconds(50), [this]() { pollHistory(); });
 }
 
 void AppController::pollHistory()
@@ -763,9 +583,7 @@ void AppController::pollHistory()
         return;
     }
 
-    if (m_historyTask.wait_for(
-            std::chrono::milliseconds(0)) !=
-        std::future_status::ready)
+    if (m_historyTask.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
     {
         return;
     }
@@ -774,68 +592,43 @@ void AppController::pollHistory()
 
     try
     {
-        std::vector<Commit> commits =
-            m_historyTask.get();
+        std::vector<Commit> commits = m_historyTask.get();
 
         updateHistoryGraph(commits);
 
-        std::vector<slint::SharedString>
-            commitHashes;
+        std::vector<slint::SharedString> commitHashes;
 
-        std::vector<slint::SharedString>
-            commitDetails;
+        std::vector<slint::SharedString> commitDetails;
 
-        commitHashes.reserve(
-            commits.size());
+        commitHashes.reserve(commits.size());
 
-        commitDetails.reserve(
-            commits.size());
+        commitDetails.reserve(commits.size());
 
-        for (const Commit& commit :
-             commits)
+        for (const Commit& commit : commits)
         {
             std::string shortHash =
-                commit.hash.substr(
-                    0,
-                    std::min<std::size_t>(
-                        7,
-                        commit.hash.size()));
+                commit.hash.substr(0, std::min<std::size_t>(7, commit.hash.size()));
 
-            commitHashes.emplace_back(
-                shortHash);
+            commitHashes.emplace_back(shortHash);
 
             commitDetails.emplace_back(
-                commit.subject +
-                "  —  " +
-                commit.author +
-                "  " +
-                commit.date);
+                commit.subject + "  —  " + commit.author + "  " + commit.date);
         }
 
         m_window->set_history_commits(
-            std::make_shared<
-                slint::VectorModel<
-                    slint::SharedString>>(
-                std::move(commitHashes)));
+            std::make_shared<slint::VectorModel<slint::SharedString>>(std::move(commitHashes)));
 
         m_window->set_history_details(
-            std::make_shared<
-                slint::VectorModel<
-                    slint::SharedString>>(
-                std::move(commitDetails)));
+            std::make_shared<slint::VectorModel<slint::SharedString>>(std::move(commitDetails)));
 
-        m_window->set_history_count(
-            static_cast<int>(
-                commits.size()));
-        
+        m_window->set_history_count(static_cast<int>(commits.size()));
+
         startBranchRefresh();
     }
     catch (const std::exception& e)
     {
         m_window->set_status_text(
-            slint::SharedString(
-                std::string("Failed to load history: ") +
-                e.what()));
+            slint::SharedString(std::string("Failed to load history: ") + e.what()));
     }
 }
 
@@ -846,54 +639,36 @@ void AppController::selectFile(int index)
         return;
     }
 
-    if (index < 0 ||
-        index >= static_cast<int>(
-            m_repositoryStatus.files.size()))
+    if (index < 0 || index >= static_cast<int>(m_repositoryStatus.files.size()))
     {
         return;
     }
 
-    const ChangedFile& file =
-        m_repositoryStatus.files[index];
+    const ChangedFile& file = m_repositoryStatus.files[index];
 
-    startDiffRefresh(
-        file.path,
-        file.staged);
+    startDiffRefresh(file.path, file.staged);
 }
 
-void AppController::startDiffRefresh(
-    const std::filesystem::path& path,
-    bool staged)
+void AppController::startDiffRefresh(const std::filesystem::path& path, bool staged)
 {
     if (!m_repository)
     {
         return;
     }
 
-    const std::filesystem::path repositoryPath =
-        m_repository->workingDirectory();
+    const std::filesystem::path repositoryPath = m_repository->workingDirectory();
 
-    m_diffTask =
-        m_scheduler.submit(
-            [repositoryPath, path, staged]()
-            {
-                GitRepository repository(
-                    repositoryPath);
+    m_diffTask = m_scheduler.submit([repositoryPath, path, staged]()
+    {
+        GitRepository repository(repositoryPath);
 
-                return repository.diff(
-                    path,
-                    staged);
-            });
+        return repository.diff(path, staged);
+    });
 
     m_repositoryTimer.stop();
 
     m_repositoryTimer.start(
-        slint::TimerMode::Repeated,
-        std::chrono::milliseconds(50),
-        [this]()
-        {
-            pollDiff();
-        });
+        slint::TimerMode::Repeated, std::chrono::milliseconds(50), [this]() { pollDiff(); });
 }
 
 void AppController::pollDiff()
@@ -904,9 +679,7 @@ void AppController::pollDiff()
         return;
     }
 
-    if (m_diffTask.wait_for(
-            std::chrono::milliseconds(0)) !=
-        std::future_status::ready)
+    if (m_diffTask.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
     {
         return;
     }
@@ -915,17 +688,13 @@ void AppController::pollDiff()
 
     try
     {
-        Diff diff =
-            m_diffTask.get();
+        Diff diff = m_diffTask.get();
 
-        std::vector<std::string> lines =
-            splitDiffLines(diff.text);
+        std::vector<std::string> lines = splitDiffLines(diff.text);
 
-        std::vector<slint::SharedString>
-            diffLines;
+        std::vector<slint::SharedString> diffLines;
 
-        std::vector<int>
-            diffLineTypes;
+        std::vector<int> diffLineTypes;
 
         diffLines.reserve(lines.size());
         diffLineTypes.reserve(lines.size());
@@ -933,45 +702,30 @@ void AppController::pollDiff()
         for (const std::string& line : lines)
         {
             diffLines.emplace_back(line);
-            diffLineTypes.push_back(
-                getDiffLineType(line));
+            diffLineTypes.push_back(getDiffLineType(line));
         }
 
         m_window->set_diff_lines(
-            std::make_shared<
-                slint::VectorModel<
-                    slint::SharedString>>(
-                std::move(diffLines)));
+            std::make_shared<slint::VectorModel<slint::SharedString>>(std::move(diffLines)));
 
         m_window->set_diff_line_types(
-            std::make_shared<
-                slint::VectorModel<int>>(
-                std::move(diffLineTypes)));
+            std::make_shared<slint::VectorModel<int>>(std::move(diffLineTypes)));
     }
     catch (const std::exception& e)
     {
-        std::vector<slint::SharedString>
-            errorLines;
+        std::vector<slint::SharedString> errorLines;
 
-        std::vector<int>
-            errorTypes;
+        std::vector<int> errorTypes;
 
-        errorLines.emplace_back(
-            std::string("Failed to load diff: ") +
-            e.what());
+        errorLines.emplace_back(std::string("Failed to load diff: ") + e.what());
 
         errorTypes.push_back(2);
 
         m_window->set_diff_lines(
-            std::make_shared<
-                slint::VectorModel<
-                    slint::SharedString>>(
-                std::move(errorLines)));
+            std::make_shared<slint::VectorModel<slint::SharedString>>(std::move(errorLines)));
 
         m_window->set_diff_line_types(
-            std::make_shared<
-                slint::VectorModel<int>>(
-                std::move(errorTypes)));
+            std::make_shared<slint::VectorModel<int>>(std::move(errorTypes)));
     }
 }
 
@@ -982,28 +736,19 @@ void AppController::startBranchRefresh()
         return;
     }
 
-    const std::filesystem::path repositoryPath =
-        m_repository->workingDirectory();
+    const std::filesystem::path repositoryPath = m_repository->workingDirectory();
 
-    m_branchTask =
-        m_scheduler.submit(
-            [repositoryPath]()
-            {
-                GitRepository repository(
-                    repositoryPath);
+    m_branchTask = m_scheduler.submit([repositoryPath]()
+    {
+        GitRepository repository(repositoryPath);
 
-                return repository.branches();
-            });
+        return repository.branches();
+    });
 
     m_repositoryTimer.stop();
 
     m_repositoryTimer.start(
-        slint::TimerMode::Repeated,
-        std::chrono::milliseconds(50),
-        [this]()
-        {
-            pollBranches();
-        });
+        slint::TimerMode::Repeated, std::chrono::milliseconds(50), [this]() { pollBranches(); });
 }
 
 void AppController::pollBranches()
@@ -1014,9 +759,7 @@ void AppController::pollBranches()
         return;
     }
 
-    if (m_branchTask.wait_for(
-            std::chrono::milliseconds(0)) !=
-        std::future_status::ready)
+    if (m_branchTask.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
     {
         return;
     }
@@ -1025,51 +768,35 @@ void AppController::pollBranches()
 
     try
     {
-        std::vector<Branch> branches =
-            m_branchTask.get();
+        std::vector<Branch> branches = m_branchTask.get();
 
-        std::vector<slint::SharedString>
-            branchNames;
+        std::vector<slint::SharedString> branchNames;
 
-        std::vector<bool>
-            branchCurrent;
+        std::vector<bool> branchCurrent;
 
-        branchNames.reserve(
-            branches.size());
+        branchNames.reserve(branches.size());
 
-        branchCurrent.reserve(
-            branches.size());
+        branchCurrent.reserve(branches.size());
 
-        for (const Branch& branch :
-             branches)
+        for (const Branch& branch : branches)
         {
-            branchNames.emplace_back(
-                branch.name);
+            branchNames.emplace_back(branch.name);
 
-            branchCurrent.push_back(
-                branch.current);
+            branchCurrent.push_back(branch.current);
         }
 
         m_branches = branches;
 
         m_window->set_branch_names(
-            std::make_shared<
-                slint::VectorModel<
-                    slint::SharedString>>(
-                std::move(branchNames)));
+            std::make_shared<slint::VectorModel<slint::SharedString>>(std::move(branchNames)));
 
         m_window->set_branch_current(
-            std::make_shared<
-                slint::VectorModel<bool>>(
-                std::move(branchCurrent)));
+            std::make_shared<slint::VectorModel<bool>>(std::move(branchCurrent)));
     }
     catch (const std::exception& e)
     {
         m_window->set_status_text(
-            slint::SharedString(
-                std::string(
-                    "Failed to load branches: ") +
-                e.what()));
+            slint::SharedString(std::string("Failed to load branches: ") + e.what()));
     }
 }
 
@@ -1081,22 +808,17 @@ void AppController::checkoutBranch(int index)
     }
 
     if (m_checkoutTask.valid() &&
-        m_checkoutTask.wait_for(
-            std::chrono::milliseconds(0)) !=
-        std::future_status::ready)
+        m_checkoutTask.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
     {
         return;
     }
 
-    if (index < 0 ||
-        index >= static_cast<int>(
-            m_branches.size()))
+    if (index < 0 || index >= static_cast<int>(m_branches.size()))
     {
         return;
     }
 
-    const Branch& branch =
-        m_branches[index];
+    const Branch& branch = m_branches[index];
 
     if (branch.current)
     {
@@ -1106,54 +828,32 @@ void AppController::checkoutBranch(int index)
     startCheckout(branch.name);
 }
 
-void AppController::startCheckout(
-    const std::string& branchName)
+void AppController::startCheckout(const std::string& branchName)
 {
     if (!m_repository)
     {
         return;
     }
 
-    const std::filesystem::path repositoryPath =
-        m_repository->workingDirectory();
+    const std::filesystem::path repositoryPath = m_repository->workingDirectory();
 
-    startOperation(
-        "Switch Branch",
-        "git switch " + branchName);
+    startOperation("Switch Branch", "git switch " + branchName);
 
-    std::shared_ptr<OperationLog> operationLog =
-        m_operationLog;
+    std::shared_ptr<OperationLog> operationLog = m_operationLog;
 
-    m_checkoutTask =
-        m_scheduler.submit(
-            [repositoryPath,
-             branchName,
-             operationLog]()
-            {
-                GitRepository repository(
-                    repositoryPath);
+    m_checkoutTask = m_scheduler.submit([repositoryPath, branchName, operationLog]()
+    {
+        GitRepository repository(repositoryPath);
 
-                repository.checkoutStreaming(
-                    branchName,
-                    [operationLog](
-                        bool isError,
-                        const std::string& text)
-                    {
-                        operationLog->append(
-                            isError,
-                            text);
-                    });
-            });
+        repository.checkoutStreaming(branchName,
+            [operationLog](bool isError, const std::string& text)
+        { operationLog->append(isError, text); });
+    });
 
     m_repositoryTimer.stop();
 
     m_repositoryTimer.start(
-        slint::TimerMode::Repeated,
-        std::chrono::milliseconds(50),
-        [this]()
-        {
-            pollCheckout();
-        });
+        slint::TimerMode::Repeated, std::chrono::milliseconds(50), [this]() { pollCheckout(); });
 }
 
 void AppController::pollCheckout()
@@ -1164,9 +864,7 @@ void AppController::pollCheckout()
         return;
     }
 
-    if (m_checkoutTask.wait_for(
-            std::chrono::milliseconds(0)) !=
-        std::future_status::ready)
+    if (m_checkoutTask.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
     {
         return;
     }
@@ -1177,36 +875,22 @@ void AppController::pollCheckout()
     {
         m_checkoutTask.get();
 
-        finishOperation(
-            true,
-            0);
+        finishOperation(true, 0);
 
-        m_window->set_diff_lines(
-            std::make_shared<
-                slint::VectorModel<
-                    slint::SharedString>>());
+        m_window->set_diff_lines(std::make_shared<slint::VectorModel<slint::SharedString>>());
 
-        m_window->set_diff_line_types(
-            std::make_shared<
-                slint::VectorModel<int>>());
+        m_window->set_diff_line_types(std::make_shared<slint::VectorModel<int>>());
 
         startStatusRefresh();
     }
     catch (const std::exception& e)
     {
-        appendOperationLog(
-            true,
-            e.what());
+        appendOperationLog(true, e.what());
 
-        finishOperation(
-            false,
-            1);
+        finishOperation(false, 1);
 
         m_window->set_status_text(
-            slint::SharedString(
-                std::string(
-                    "Failed to switch branch: ") +
-                e.what()));
+            slint::SharedString(std::string("Failed to switch branch: ") + e.what()));
     }
 }
 
@@ -1218,9 +902,7 @@ void AppController::fetch()
     }
 
     if (m_fetchTask.valid() &&
-        m_fetchTask.wait_for(
-            std::chrono::milliseconds(0)) !=
-        std::future_status::ready)
+        m_fetchTask.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
     {
         return;
     }
@@ -1235,44 +917,24 @@ void AppController::startFetch()
         return;
     }
 
-    const std::filesystem::path repositoryPath =
-        m_repository->workingDirectory();
+    const std::filesystem::path repositoryPath = m_repository->workingDirectory();
 
-    startOperation(
-        "Fetch",
-        "git fetch");
+    startOperation("Fetch", "git fetch");
 
-    std::shared_ptr<OperationLog> operationLog =
-        m_operationLog;
+    std::shared_ptr<OperationLog> operationLog = m_operationLog;
 
-    m_fetchTask =
-        m_scheduler.submit(
-            [repositoryPath,
-             operationLog]()
-            {
-                GitRepository repository(
-                    repositoryPath);
+    m_fetchTask = m_scheduler.submit([repositoryPath, operationLog]()
+    {
+        GitRepository repository(repositoryPath);
 
-                return repository.fetchStreaming(
-                    [operationLog](
-                        bool isError,
-                        const std::string& text)
-                    {
-                        operationLog->append(
-                            isError,
-                            text);
-                    });
-            });
+        return repository.fetchStreaming([operationLog](bool isError, const std::string& text)
+        { operationLog->append(isError, text); });
+    });
 
     m_repositoryTimer.stop();
 
     m_repositoryTimer.start(
-        slint::TimerMode::Repeated,
-        std::chrono::milliseconds(50),
-        [this]()
-        {
-            pollFetch();
-        });
+        slint::TimerMode::Repeated, std::chrono::milliseconds(50), [this]() { pollFetch(); });
 }
 
 void AppController::pollFetch()
@@ -1283,9 +945,7 @@ void AppController::pollFetch()
         return;
     }
 
-    if (m_fetchTask.wait_for(
-            std::chrono::milliseconds(0)) !=
-        std::future_status::ready)
+    if (m_fetchTask.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
     {
         return;
     }
@@ -1294,43 +954,28 @@ void AppController::pollFetch()
 
     try
     {
-        const int exitCode =
-            m_fetchTask.get();
+        const int exitCode = m_fetchTask.get();
 
         if (exitCode == 0)
         {
-            finishOperation(
-                true,
-                0);
+            finishOperation(true, 0);
 
             startStatusRefresh();
         }
         else
         {
-            finishOperation(
-                false,
-                exitCode);
+            finishOperation(false, exitCode);
 
-            m_window->set_status_text(
-                slint::SharedString(
-                    "Failed to fetch."));
+            m_window->set_status_text(slint::SharedString("Failed to fetch."));
         }
     }
     catch (const std::exception& e)
     {
-        appendOperationLog(
-            true,
-            e.what());
+        appendOperationLog(true, e.what());
 
-        finishOperation(
-            false,
-            1);
+        finishOperation(false, 1);
 
-        m_window->set_status_text(
-            slint::SharedString(
-                std::string(
-                    "Failed to fetch: ") +
-                e.what()));
+        m_window->set_status_text(slint::SharedString(std::string("Failed to fetch: ") + e.what()));
     }
 }
 
@@ -1342,9 +987,7 @@ void AppController::pull()
     }
 
     if (m_pullTask.valid() &&
-        m_pullTask.wait_for(
-            std::chrono::milliseconds(0)) !=
-        std::future_status::ready)
+        m_pullTask.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
     {
         return;
     }
@@ -1359,44 +1002,24 @@ void AppController::startPull()
         return;
     }
 
-    const std::filesystem::path repositoryPath =
-        m_repository->workingDirectory();
+    const std::filesystem::path repositoryPath = m_repository->workingDirectory();
 
-    startOperation(
-        "Pull",
-        "git pull");
+    startOperation("Pull", "git pull");
 
-    std::shared_ptr<OperationLog> operationLog =
-        m_operationLog;
+    std::shared_ptr<OperationLog> operationLog = m_operationLog;
 
-    m_pullTask =
-        m_scheduler.submit(
-            [repositoryPath,
-             operationLog]()
-            {
-                GitRepository repository(
-                    repositoryPath);
+    m_pullTask = m_scheduler.submit([repositoryPath, operationLog]()
+    {
+        GitRepository repository(repositoryPath);
 
-                return repository.pullStreaming(
-                    [operationLog](
-                        bool isError,
-                        const std::string& text)
-                    {
-                        operationLog->append(
-                            isError,
-                            text);
-                    });
-            });
+        return repository.pullStreaming([operationLog](bool isError, const std::string& text)
+        { operationLog->append(isError, text); });
+    });
 
     m_repositoryTimer.stop();
 
     m_repositoryTimer.start(
-        slint::TimerMode::Repeated,
-        std::chrono::milliseconds(50),
-        [this]()
-        {
-            pollPull();
-        });
+        slint::TimerMode::Repeated, std::chrono::milliseconds(50), [this]() { pollPull(); });
 }
 
 void AppController::pollPull()
@@ -1407,9 +1030,7 @@ void AppController::pollPull()
         return;
     }
 
-    if (m_pullTask.wait_for(
-            std::chrono::milliseconds(0)) !=
-        std::future_status::ready)
+    if (m_pullTask.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
     {
         return;
     }
@@ -1418,52 +1039,32 @@ void AppController::pollPull()
 
     try
     {
-        const int exitCode =
-            m_pullTask.get();
+        const int exitCode = m_pullTask.get();
 
         if (exitCode == 0)
         {
-            finishOperation(
-                true,
-                0);
+            finishOperation(true, 0);
 
-            m_window->set_diff_lines(
-                std::make_shared<
-                    slint::VectorModel<
-                        slint::SharedString>>());
+            m_window->set_diff_lines(std::make_shared<slint::VectorModel<slint::SharedString>>());
 
-            m_window->set_diff_line_types(
-                std::make_shared<
-                    slint::VectorModel<int>>());
+            m_window->set_diff_line_types(std::make_shared<slint::VectorModel<int>>());
 
             startStatusRefresh();
         }
         else
         {
-            finishOperation(
-                false,
-                exitCode);
+            finishOperation(false, exitCode);
 
-            m_window->set_status_text(
-                slint::SharedString(
-                    "Failed to pull."));
+            m_window->set_status_text(slint::SharedString("Failed to pull."));
         }
     }
     catch (const std::exception& e)
     {
-        appendOperationLog(
-            true,
-            e.what());
+        appendOperationLog(true, e.what());
 
-        finishOperation(
-            false,
-            1);
+        finishOperation(false, 1);
 
-        m_window->set_status_text(
-            slint::SharedString(
-                std::string(
-                    "Failed to pull: ") +
-                e.what()));
+        m_window->set_status_text(slint::SharedString(std::string("Failed to pull: ") + e.what()));
     }
 }
 
@@ -1475,9 +1076,7 @@ void AppController::push()
     }
 
     if (m_pushTask.valid() &&
-        m_pushTask.wait_for(
-            std::chrono::milliseconds(0)) !=
-        std::future_status::ready)
+        m_pushTask.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
     {
         return;
     }
@@ -1492,44 +1091,24 @@ void AppController::startPush()
         return;
     }
 
-    const std::filesystem::path repositoryPath =
-        m_repository->workingDirectory();
+    const std::filesystem::path repositoryPath = m_repository->workingDirectory();
 
-    startOperation(
-        "Push",
-        "git push");
+    startOperation("Push", "git push");
 
-    std::shared_ptr<OperationLog> operationLog =
-        m_operationLog;
+    std::shared_ptr<OperationLog> operationLog = m_operationLog;
 
-    m_pushTask =
-        m_scheduler.submit(
-            [repositoryPath,
-             operationLog]()
-            {
-                GitRepository repository(
-                    repositoryPath);
+    m_pushTask = m_scheduler.submit([repositoryPath, operationLog]()
+    {
+        GitRepository repository(repositoryPath);
 
-                return repository.pushStreaming(
-                    [operationLog](
-                        bool isError,
-                        const std::string& text)
-                    {
-                        operationLog->append(
-                            isError,
-                            text);
-                    });
-            });
+        return repository.pushStreaming([operationLog](bool isError, const std::string& text)
+        { operationLog->append(isError, text); });
+    });
 
     m_repositoryTimer.stop();
 
     m_repositoryTimer.start(
-        slint::TimerMode::Repeated,
-        std::chrono::milliseconds(50),
-        [this]()
-        {
-            pollPush();
-        });
+        slint::TimerMode::Repeated, std::chrono::milliseconds(50), [this]() { pollPush(); });
 }
 
 void AppController::pollPush()
@@ -1540,9 +1119,7 @@ void AppController::pollPush()
         return;
     }
 
-    if (m_pushTask.wait_for(
-            std::chrono::milliseconds(0)) !=
-        std::future_status::ready)
+    if (m_pushTask.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
     {
         return;
     }
@@ -1551,112 +1128,69 @@ void AppController::pollPush()
 
     try
     {
-        const int exitCode =
-            m_pushTask.get();
+        const int exitCode = m_pushTask.get();
 
         if (exitCode == 0)
         {
-            finishOperation(
-                true,
-                0);
+            finishOperation(true, 0);
 
             startStatusRefresh();
         }
         else
         {
-            finishOperation(
-                false,
-                exitCode);
+            finishOperation(false, exitCode);
 
-            m_window->set_status_text(
-                slint::SharedString(
-                    "Failed to push."));
+            m_window->set_status_text(slint::SharedString("Failed to push."));
         }
     }
     catch (const std::exception& e)
     {
-        appendOperationLog(
-            true,
-            e.what());
+        appendOperationLog(true, e.what());
 
-        finishOperation(
-            false,
-            1);
+        finishOperation(false, 1);
 
-        m_window->set_status_text(
-            slint::SharedString(
-                std::string(
-                    "Failed to push: ") +
-                e.what()));
+        m_window->set_status_text(slint::SharedString(std::string("Failed to push: ") + e.what()));
     }
 }
 
 void AppController::cloneRepository(
-    const std::string& url,
-    const std::filesystem::path& destination)
+    const std::string& url, const std::filesystem::path& destination)
 {
-    if (url.empty() ||
-        destination.empty())
+    if (url.empty() || destination.empty())
     {
         return;
     }
 
     if (m_cloneTask.valid() &&
-        m_cloneTask.wait_for(
-            std::chrono::milliseconds(0)) !=
-        std::future_status::ready)
+        m_cloneTask.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
     {
         return;
     }
 
-    startClone(
-        url,
-        destination);
+    startClone(url, destination);
 }
 
-void AppController::startClone(
-    const std::string& url,
-    const std::filesystem::path& destination)
+void AppController::startClone(const std::string& url, const std::filesystem::path& destination)
 {
-    startOperation(
-        "Clone",
-        "git clone " + url);
+    startOperation("Clone", "git clone " + url);
 
-    std::shared_ptr<OperationLog> operationLog =
-        m_operationLog;
+    std::shared_ptr<OperationLog> operationLog = m_operationLog;
 
     m_cloneDestination = destination;
 
-    m_cloneTask =
-        m_scheduler.submit(
-            [url,
-             destination,
-             operationLog]()
-            {
-                GitProcess gitProcess;
+    m_cloneTask = m_scheduler.submit([url, destination, operationLog]()
+    {
+        GitProcess gitProcess;
 
-                return gitProcess.cloneStreaming(
-                    url,
-                    destination,
-                    [operationLog](
-                        bool isError,
-                        const std::string& text)
-                    {
-                        operationLog->append(
-                            isError,
-                            text);
-                    });
-            });
+        return gitProcess.cloneStreaming(url, destination,
+            [operationLog](bool isError, const std::string& text)
+        { operationLog->append(isError, text); });
+    });
 
     m_repositoryTimer.stop();
 
     m_repositoryTimer.start(
-        slint::TimerMode::Repeated,
-        std::chrono::milliseconds(50),
-        [this]()
-        {
-            pollClone();
-        });
+        slint::TimerMode::Repeated, std::chrono::milliseconds(50), [this]() { pollClone(); });
 }
 
 void AppController::pollClone()
@@ -1667,9 +1201,7 @@ void AppController::pollClone()
         return;
     }
 
-    if (m_cloneTask.wait_for(
-            std::chrono::milliseconds(0)) !=
-        std::future_status::ready)
+    if (m_cloneTask.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
     {
         return;
     }
@@ -1678,19 +1210,14 @@ void AppController::pollClone()
 
     try
     {
-        const int exitCode =
-            m_cloneTask.get();
+        const int exitCode = m_cloneTask.get();
 
         if (exitCode == 0)
         {
-            finishOperation(
-                true,
-                0);
+            finishOperation(true, 0);
 
             // Open the newly cloned repository.
-            m_repository =
-                std::make_unique<GitRepository>(
-                    m_cloneDestination);
+            m_repository = std::make_unique<GitRepository>(m_cloneDestination);
 
             // Continue using the existing
             // repository refresh pipeline.
@@ -1698,38 +1225,24 @@ void AppController::pollClone()
         }
         else
         {
-            finishOperation(
-                false,
-                exitCode);
+            finishOperation(false, exitCode);
 
-            m_window->set_status_text(
-                slint::SharedString(
-                    "Failed to clone."));
+            m_window->set_status_text(slint::SharedString("Failed to clone."));
         }
     }
     catch (const std::exception& e)
     {
-        appendOperationLog(
-            true,
-            e.what());
+        appendOperationLog(true, e.what());
 
-        finishOperation(
-            false,
-            1);
+        finishOperation(false, 1);
 
-        m_window->set_status_text(
-            slint::SharedString(
-                std::string(
-                    "Failed to clone: ") +
-                e.what()));
+        m_window->set_status_text(slint::SharedString(std::string("Failed to clone: ") + e.what()));
     }
 }
 
-void AppController::updateHistoryGraph(
-    const std::vector<Commit>& commits)
+void AppController::updateHistoryGraph(const std::vector<Commit>& commits)
 {
-    std::vector<CommitGraphNode> graph =
-        CommitGraph::build(commits);
+    std::vector<CommitGraphNode> graph = CommitGraph::build(commits);
 
     std::vector<int> lanes;
     std::vector<int> parentLane0;
@@ -1751,111 +1264,80 @@ void AppController::updateHistoryGraph(
 
     for (const CommitGraphNode& node : graph)
     {
-        lanes.push_back(
-            node.lane);
+        lanes.push_back(node.lane);
 
-        const int parentCount =
-            static_cast<int>(
-                node.parentLanes.size());
+        const int parentCount = static_cast<int>(node.parentLanes.size());
 
-        parentCounts.push_back(
-            parentCount);
+        parentCounts.push_back(parentCount);
 
         // First parent.
         if (parentCount > 0)
         {
-            parentLane0.push_back(
-                node.parentLanes[0]);
+            parentLane0.push_back(node.parentLanes[0]);
         }
         else
         {
-            parentLane0.push_back(
-                node.lane);
+            parentLane0.push_back(node.lane);
         }
 
         // Second parent.
         if (parentCount > 1)
         {
-            parentLane1.push_back(
-                node.parentLanes[1]);
+            parentLane1.push_back(node.parentLanes[1]);
         }
         else
         {
-            parentLane1.push_back(
-                node.lane);
+            parentLane1.push_back(node.lane);
         }
 
         // Active lanes.
-        const int activeCount =
-            static_cast<int>(
-                node.activeLanes.size());
+        const int activeCount = static_cast<int>(node.activeLanes.size());
 
-        activeLaneCounts.push_back(
-            activeCount);
+        activeLaneCounts.push_back(activeCount);
 
         if (activeCount > 0)
         {
-            activeLane0.push_back(
-                node.activeLanes[0]);
+            activeLane0.push_back(node.activeLanes[0]);
         }
         else
         {
-            activeLane0.push_back(
-                node.lane);
+            activeLane0.push_back(node.lane);
         }
 
         if (activeCount > 1)
         {
-            activeLane1.push_back(
-                node.activeLanes[1]);
+            activeLane1.push_back(node.activeLanes[1]);
         }
         else
         {
-            activeLane1.push_back(
-                node.lane);
+            activeLane1.push_back(node.lane);
         }
     }
 
-    m_window->set_history_lanes(
-        std::make_shared<
-            slint::VectorModel<int>>(
-                std::move(lanes)));
+    m_window->set_history_lanes(std::make_shared<slint::VectorModel<int>>(std::move(lanes)));
 
     m_window->set_history_parent_lanes(
-        std::make_shared<
-            slint::VectorModel<int>>(
-                std::move(parentLane0)));
+        std::make_shared<slint::VectorModel<int>>(std::move(parentLane0)));
 
     m_window->set_history_parent_lanes_1(
-        std::make_shared<
-            slint::VectorModel<int>>(
-                std::move(parentLane1)));
+        std::make_shared<slint::VectorModel<int>>(std::move(parentLane1)));
 
     m_window->set_history_parent_counts(
-        std::make_shared<
-            slint::VectorModel<int>>(
-                std::move(parentCounts)));
+        std::make_shared<slint::VectorModel<int>>(std::move(parentCounts)));
 
     m_window->set_history_active_lanes_0(
-        std::make_shared<
-            slint::VectorModel<int>>(
-                std::move(activeLane0)));
+        std::make_shared<slint::VectorModel<int>>(std::move(activeLane0)));
 
     m_window->set_history_active_lanes_1(
-        std::make_shared<
-            slint::VectorModel<int>>(
-                std::move(activeLane1)));
+        std::make_shared<slint::VectorModel<int>>(std::move(activeLane1)));
 
     m_window->set_history_active_lane_counts(
-        std::make_shared<
-            slint::VectorModel<int>>(
-                std::move(activeLaneCounts)));
+        std::make_shared<slint::VectorModel<int>>(std::move(activeLaneCounts)));
 }
 
 void AppController::closeOperationDialog()
 {
-    if (m_operationState.status ==
-        OperationStatus::Running)
+    if (m_operationState.status == OperationStatus::Running)
     {
         return;
     }
@@ -1872,8 +1354,7 @@ void AppController::pollOperationLog()
         return;
     }
 
-    std::vector<std::string> entries =
-        m_operationLog->consume();
+    std::vector<std::string> entries = m_operationLog->consume();
 
     bool changed = false;
 
@@ -1883,26 +1364,18 @@ void AppController::pollOperationLog()
 
         std::size_t newlinePosition = 0;
 
-        while ((newlinePosition =
-                    m_operationPendingText.find('\n'))
-               != std::string::npos)
+        while ((newlinePosition = m_operationPendingText.find('\n')) != std::string::npos)
         {
-            std::string line =
-                m_operationPendingText.substr(
-                    0,
-                    newlinePosition);
+            std::string line = m_operationPendingText.substr(0, newlinePosition);
 
             if (!line.empty() && line.back() == '\r')
             {
                 line.pop_back();
             }
 
-            m_operationLines.push_back(
-                std::move(line));
+            m_operationLines.push_back(std::move(line));
 
-            m_operationPendingText.erase(
-                0,
-                newlinePosition + 1);
+            m_operationPendingText.erase(0, newlinePosition + 1);
 
             changed = true;
         }
@@ -1911,13 +1384,11 @@ void AppController::pollOperationLog()
     }
 
     // Display an incomplete line while it is still arriving.
-    std::vector<std::string> visibleLines =
-        m_operationLines;
+    std::vector<std::string> visibleLines = m_operationLines;
 
     if (!m_operationPendingText.empty())
     {
-        visibleLines.push_back(
-            m_operationPendingText);
+        visibleLines.push_back(m_operationPendingText);
     }
 
     if (changed)
@@ -1931,128 +1402,87 @@ void AppController::pollOperationLog()
         }
 
         m_window->set_operation_log_lines(
-            std::make_shared<
-                slint::VectorModel<
-                    slint::SharedString>>(
-                std::move(uiLines)));
+            std::make_shared<slint::VectorModel<slint::SharedString>>(std::move(uiLines)));
     }
 
-    if (m_operationState.status != OperationStatus::Running &&
-        m_operationPendingText.empty())
+    if (m_operationState.status != OperationStatus::Running && m_operationPendingText.empty())
     {
         m_operationTimer.stop();
     }
 }
 
-void AppController::startOperation(
-    const std::string& title,
-    const std::string& command)
+void AppController::startOperation(const std::string& title, const std::string& command)
 {
-    m_operationLog =
-        std::make_shared<OperationLog>();
+    m_operationLog = std::make_shared<OperationLog>();
 
-    m_operationState =
-        OperationState{};
+    m_operationState = OperationState{};
 
-    m_operationState.status =
-        OperationStatus::Running;
+    m_operationState.status = OperationStatus::Running;
 
-    m_operationState.title =
-        title;
+    m_operationState.title = title;
 
-    m_operationState.command =
-        command;
+    m_operationState.command = command;
 
     m_operationState.exitCode = -1;
 
     m_operationLines.clear();
     m_operationPendingText.clear();
 
-    m_window->set_operation_title(
-        slint::SharedString(title));
+    m_window->set_operation_title(slint::SharedString(title));
 
-    m_window->set_operation_command(
-        slint::SharedString(command));
+    m_window->set_operation_command(slint::SharedString(command));
 
-    m_window->set_operation_status(
-        slint::SharedString("Running..."));
+    m_window->set_operation_status(slint::SharedString("Running..."));
 
     m_window->set_operation_running(true);
     m_window->set_operation_visible(true);
 
-    m_window->set_operation_log_lines(
-        std::make_shared<
-            slint::VectorModel<
-                slint::SharedString>>());
+    m_window->set_operation_log_lines(std::make_shared<slint::VectorModel<slint::SharedString>>());
 
     m_operationTimer.stop();
 
-    m_operationTimer.start(
-        slint::TimerMode::Repeated,
-        std::chrono::milliseconds(50),
-        [this]()
-        {
-            pollOperationLog();
-        });
+    m_operationTimer.start(slint::TimerMode::Repeated, std::chrono::milliseconds(50),
+        [this]() { pollOperationLog(); });
 }
 
-void AppController::finishOperation(
-    bool success,
-    int exitCode)
+void AppController::finishOperation(bool success, int exitCode)
 {
-    m_operationState.status =
-        success
-            ? OperationStatus::Success
-            : OperationStatus::Failed;
+    m_operationState.status = success ? OperationStatus::Success : OperationStatus::Failed;
 
-    m_operationState.exitCode =
-        exitCode;
+    m_operationState.exitCode = exitCode;
 
     m_window->set_operation_running(false);
 
-    m_window->set_operation_status(
-        slint::SharedString(
-            success
-                ? "Completed"
-                : "Failed"));
+    m_window->set_operation_status(slint::SharedString(success ? "Completed" : "Failed"));
 }
 
-void AppController::appendOperationLog(
-    bool isError,
-    const std::string& text)
+void AppController::appendOperationLog(bool isError, const std::string& text)
 {
     if (!m_operationLog)
     {
         return;
     }
 
-    m_operationLog->append(
-        isError,
-        text);
+    m_operationLog->append(isError, text);
 }
 
 void AppController::showCloneDialog()
 {
-    m_window->set_clone_dialog_url(
-        slint::SharedString());
+    m_window->set_clone_dialog_url(slint::SharedString());
 
-    m_window->set_clone_dialog_destination(
-        slint::SharedString());
+    m_window->set_clone_dialog_destination(slint::SharedString());
 
     m_window->set_clone_dialog_visible(true);
 }
 
 void AppController::browseCloneDestination()
 {
-    const auto folder =
-        NativeDialogs::pickFolder();
+    const auto folder = NativeDialogs::pickFolder();
 
     if (!folder)
     {
         return;
     }
 
-    m_window->set_clone_dialog_destination(
-        slint::SharedString(
-            folder->string()));
+    m_window->set_clone_dialog_destination(slint::SharedString(folder->string()));
 }

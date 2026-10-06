@@ -85,15 +85,13 @@ export component CloneDialog inherits Rectangle {
             Button {
                 text: "Clone";
 
-                enabled:
-                    root.repository-url != "" &&
+                enabled: root.repository-url != "" &&
                     root.destination != "";
 
                 clicked => {
                     root.clone(
                         root.repository-url,
-                        root.destination
-                    );
+                        root.destination);
                 }
             }
         }

@@ -7,9 +7,7 @@
 class OperationLog
 {
 public:
-    void append(
-        bool isError,
-        const std::string& text);
+    void append(bool isError, const std::string& text);
 
     std::vector<std::string> consume();
 

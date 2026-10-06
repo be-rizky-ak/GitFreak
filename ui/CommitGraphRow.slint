@@ -16,7 +16,6 @@ export component CommitGraphRow inherits Rectangle {
     height: 42px;
     background: transparent;
 
-
     // =================================================
     // POSITIONS
     // =================================================
@@ -41,7 +40,6 @@ export component CommitGraphRow inherits Rectangle {
         root.graph-left * 1px
         + root.active-lane-1 * root.lane-spacing * 1px;
 
-
     // =================================================
     // CURRENT LANE - INCOMING
     // =================================================
@@ -55,22 +53,18 @@ export component CommitGraphRow inherits Rectangle {
     //
 
     Rectangle {
-        visible:
-            root.lane >= 0;
+        visible: root.lane >= 0;
 
         width: 3px;
 
-        x:
-            root.current-x - 1.5px;
+        x: root.current-x - 1.5px;
 
         y: 0px;
 
-        height:
-            root.height / 2;
+        height: root.height / 2;
 
         background: #a0a0a0;
     }
-
 
     // =================================================
     // ACTIVE BRANCH LANES
@@ -90,27 +84,22 @@ export component CommitGraphRow inherits Rectangle {
     // First active lane.
 
     Rectangle {
-        visible:
-            root.active-lane-count > 0 &&
+        visible: root.active-lane-count > 0 &&
             root.active-lane-0 != root.lane &&
             !(
-                root.parent-count > 1 &&
-                root.active-lane-0 == root.parent-lane-1
-            );
+            root.parent-count > 1 &&
+            root.active-lane-0 == root.parent-lane-1);
 
         width: 3px;
 
-        x:
-            root.active-x-0 - 1.5px;
+        x: root.active-x-0 - 1.5px;
 
         y: 0px;
 
-        height:
-            root.height;
+        height: root.height;
 
         background: #a0a0a0;
     }
-
 
     // First active lane when it is the second parent
     // of the current merge commit.
@@ -119,59 +108,48 @@ export component CommitGraphRow inherits Rectangle {
     // top of the row.
 
     Rectangle {
-        visible:
-            root.active-lane-count > 0 &&
+        visible: root.active-lane-count > 0 &&
             root.active-lane-0 != root.lane &&
             root.parent-count > 1 &&
             root.active-lane-0 == root.parent-lane-1;
 
         width: 3px;
 
-        x:
-            root.active-x-0 - 1.5px;
+        x: root.active-x-0 - 1.5px;
 
-        y:
-            root.height * 3 / 4;
+        y: root.height * 3 / 4;
 
-        height:
-            root.height / 4 + 1px;
+        height: root.height / 4 + 1px;
 
         background: #a0a0a0;
     }
-
 
     // Second active lane.
 
     Rectangle {
-        visible:
-            root.active-lane-count > 1 &&
+        visible: root.active-lane-count > 1 &&
             root.active-lane-1 != root.lane &&
             root.active-lane-1 != root.active-lane-0 &&
             !(
-                root.parent-count > 1 &&
-                root.active-lane-1 == root.parent-lane-1
-            );
+            root.parent-count > 1 &&
+            root.active-lane-1 == root.parent-lane-1);
 
         width: 3px;
 
-        x:
-            root.active-x-1 - 1.5px;
+        x: root.active-x-1 - 1.5px;
 
         y: 0px;
 
-        height:
-            root.height;
+        height: root.height;
 
         background: #a0a0a0;
     }
-
 
     // Second active lane when it is the second parent
     // of the current merge commit.
 
     Rectangle {
-        visible:
-            root.active-lane-count > 1 &&
+        visible: root.active-lane-count > 1 &&
             root.active-lane-1 != root.lane &&
             root.active-lane-1 != root.active-lane-0 &&
             root.parent-count > 1 &&
@@ -179,18 +157,14 @@ export component CommitGraphRow inherits Rectangle {
 
         width: 3px;
 
-        x:
-            root.active-x-1 - 1.5px;
+        x: root.active-x-1 - 1.5px;
 
-        y:
-            root.height * 3 / 4;
+        y: root.height * 3 / 4;
 
-        height:
-            root.height / 4 + 1px;
+        height: root.height / 4 + 1px;
 
         background: #a0a0a0;
     }
-
 
     // =================================================
     // FIRST PARENT
@@ -203,24 +177,19 @@ export component CommitGraphRow inherits Rectangle {
     //       │
 
     Rectangle {
-        visible:
-            root.parent-count > 0 &&
+        visible: root.parent-count > 0 &&
             root.lane == root.parent-lane-0;
 
         width: 3px;
 
-        x:
-            root.current-x - 1.5px;
+        x: root.current-x - 1.5px;
 
-        y:
-            root.height / 2;
+        y: root.height / 2;
 
-        height:
-            root.height / 2 + 1px;
+        height: root.height / 2 + 1px;
 
         background: #a0a0a0;
     }
-
 
     // First parent moves to another lane.
     //
@@ -229,72 +198,57 @@ export component CommitGraphRow inherits Rectangle {
     //       └────
 
     Rectangle {
-        visible:
-            root.parent-count > 0 &&
+        visible: root.parent-count > 0 &&
             root.lane != root.parent-lane-0;
 
         width: 3px;
 
-        x:
-            root.current-x - 1.5px;
+        x: root.current-x - 1.5px;
 
-        y:
-            root.height / 2;
+        y: root.height / 2;
 
-        height:
-            root.height / 4;
+        height: root.height / 4;
 
         background: #a0a0a0;
     }
-
 
     // Horizontal first-parent connection.
 
     Rectangle {
-        visible:
-            root.parent-count > 0 &&
+        visible: root.parent-count > 0 &&
             root.lane != root.parent-lane-0;
 
-        width:
-            root.parent-x-0 > root.current-x
-                ? root.parent-x-0 - root.current-x + 3px
-                : root.current-x - root.parent-x-0 + 3px;
+        width: root.parent-x-0 > root.current-x
+            ? root.parent-x-0 - root.current-x + 3px
+            : root.current-x - root.parent-x-0 + 3px;
 
         height: 3px;
 
-        x:
-            root.parent-x-0 < root.current-x
-                ? root.parent-x-0 - 1.5px
-                : root.current-x - 1.5px;
+        x: root.parent-x-0 < root.current-x
+            ? root.parent-x-0 - 1.5px
+            : root.current-x - 1.5px;
 
-        y:
-            root.height * 3 / 4;
+        y: root.height * 3 / 4;
 
         background: #a0a0a0;
     }
-
 
     // Continue down first-parent lane.
 
     Rectangle {
-        visible:
-            root.parent-count > 0 &&
+        visible: root.parent-count > 0 &&
             root.lane != root.parent-lane-0;
 
         width: 3px;
 
-        x:
-            root.parent-x-0 - 1.5px;
+        x: root.parent-x-0 - 1.5px;
 
-        y:
-            root.height * 3 / 4;
+        y: root.height * 3 / 4;
 
-        height:
-            root.height / 4 + 1px;
+        height: root.height / 4 + 1px;
 
         background: #a0a0a0;
     }
-
 
     // =================================================
     // SECOND PARENT / MERGE
@@ -311,50 +265,40 @@ export component CommitGraphRow inherits Rectangle {
     // active-lane rectangles above.
 
     Rectangle {
-        visible:
-            root.parent-count > 1 &&
+        visible: root.parent-count > 1 &&
             root.lane != root.parent-lane-1;
 
         width: 3px;
 
-        x:
-            root.current-x - 1.5px;
+        x: root.current-x - 1.5px;
 
-        y:
-            root.height / 2;
+        y: root.height / 2;
 
-        height:
-            root.height / 4;
+        height: root.height / 4;
 
         background: #a0a0a0;
     }
-
 
     // Horizontal branch to second parent.
 
     Rectangle {
-        visible:
-            root.parent-count > 1 &&
+        visible: root.parent-count > 1 &&
             root.lane != root.parent-lane-1;
 
-        width:
-            root.parent-x-1 > root.current-x
-                ? root.parent-x-1 - root.current-x + 3px
-                : root.current-x - root.parent-x-1 + 3px;
+        width: root.parent-x-1 > root.current-x
+            ? root.parent-x-1 - root.current-x + 3px
+            : root.current-x - root.parent-x-1 + 3px;
 
         height: 3px;
 
-        x:
-            root.parent-x-1 < root.current-x
-                ? root.parent-x-1 - 1.5px
-                : root.current-x - 1.5px;
+        x: root.parent-x-1 < root.current-x
+            ? root.parent-x-1 - 1.5px
+            : root.current-x - 1.5px;
 
-        y:
-            root.height * 3 / 4;
+        y: root.height * 3 / 4;
 
         background: #a0a0a0;
     }
-
 
     // =================================================
     // COMMIT NODE
@@ -364,11 +308,9 @@ export component CommitGraphRow inherits Rectangle {
         width: 10px;
         height: 10px;
 
-        x:
-            root.current-x - 5px;
+        x: root.current-x - 5px;
 
-        y:
-            (root.height - self.height) / 2;
+        y: (root.height - self.height) / 2;
 
         border-radius: 5px;
 

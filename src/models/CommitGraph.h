@@ -17,6 +17,5 @@ struct CommitGraphNode
 class CommitGraph
 {
 public:
-    static std::vector<CommitGraphNode> build(
-        const std::vector<Commit>& commits);
+    static std::vector<CommitGraphNode> build(const std::vector<Commit>& commits);
 };

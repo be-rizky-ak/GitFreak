@@ -8,6 +8,5 @@
 class GitRemoteParser
 {
 public:
-    static std::vector<Remote> parse(
-        std::string_view output);
+    static std::vector<Remote> parse(std::string_view output);
 };

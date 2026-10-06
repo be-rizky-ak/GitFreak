@@ -8,6 +8,5 @@
 class GitHistoryParser
 {
 public:
-    static std::vector<Commit> parse(
-        std::string_view output);
+    static std::vector<Commit> parse(std::string_view output);
 };

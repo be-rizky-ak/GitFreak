@@ -23,9 +23,7 @@ class TaskScheduler;
 class AppController
 {
 public:
-    AppController(
-        const slint::ComponentHandle<MainWindow>& window,
-        TaskScheduler& scheduler);
+    AppController(const slint::ComponentHandle<MainWindow>& window, TaskScheduler& scheduler);
 
     ~AppController();
 
@@ -39,27 +37,21 @@ private:
     void pollStatus();
     void stageFile(int index);
     void unstageFile(int index);
-    void startFileOperation(
-        int index,
-        bool stage);
+    void startFileOperation(int index, bool stage);
     void pollFileOperation();
     void startStatusRefresh();
-    void commit(
-        const std::string& message);
+    void commit(const std::string& message);
     void pollCommit();
     void startHistoryRefresh();
     void pollHistory();
     void selectFile(int index);
-    void startDiffRefresh(
-        const std::filesystem::path& path,
-        bool staged);
+    void startDiffRefresh(const std::filesystem::path& path, bool staged);
     void pollDiff();
     void startBranchRefresh();
     void pollBranches();
 
     void checkoutBranch(int index);
-    void startCheckout(
-        const std::string& branchName);
+    void startCheckout(const std::string& branchName);
     void pollCheckout();
 
     void fetch();
@@ -74,26 +66,15 @@ private:
     void startPush();
     void pollPush();
 
-    void cloneRepository(
-        const std::string& url,
-        const std::filesystem::path& destination);
-    void startClone(
-        const std::string& url,
-        const std::filesystem::path& destination);
+    void cloneRepository(const std::string& url, const std::filesystem::path& destination);
+    void startClone(const std::string& url, const std::filesystem::path& destination);
     void pollClone();
 
-    void updateHistoryGraph(
-        const std::vector<Commit>& commits);
+    void updateHistoryGraph(const std::vector<Commit>& commits);
 
-    void startOperation(
-        const std::string& title,
-        const std::string& command);
-    void appendOperationLog(
-        bool isError,
-        const std::string& text);
-    void finishOperation(
-        bool success,
-        int exitCode);
+    void startOperation(const std::string& title, const std::string& command);
+    void appendOperationLog(bool isError, const std::string& text);
+    void finishOperation(bool success, int exitCode);
     void pollOperationLog();
     void closeOperationDialog();
 
@@ -106,8 +87,7 @@ private:
 
     std::unique_ptr<GitRepository> m_repository;
 
-    std::future<std::optional<std::filesystem::path>>
-        m_openRepositoryTask;
+    std::future<std::optional<std::filesystem::path>> m_openRepositoryTask;
 
     std::future<RepositoryStatus> m_statusTask;
     RepositoryStatus m_repositoryStatus;

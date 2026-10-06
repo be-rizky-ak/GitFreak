@@ -11,8 +11,7 @@ enum class OperationStatus
 
 struct OperationState
 {
-    OperationStatus status =
-        OperationStatus::Running;
+    OperationStatus status = OperationStatus::Running;
 
     std::string title;
     std::string command;

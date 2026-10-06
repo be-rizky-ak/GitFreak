@@ -7,6 +7,5 @@
 class GitStatusParser
 {
 public:
-    static RepositoryStatus parse(
-        std::string_view output);
+    static RepositoryStatus parse(std::string_view output);
 };

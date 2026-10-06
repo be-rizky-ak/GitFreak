@@ -8,8 +8,7 @@
 #include <vector>
 
 GitCommandResult GitProcess::execute(
-    const std::filesystem::path& workingDirectory,
-    std::span<const std::string> arguments) const
+    const std::filesystem::path& workingDirectory, std::span<const std::string> arguments) const
 {
     SECURITY_ATTRIBUTES securityAttributes{};
     securityAttributes.nLength = sizeof(SECURITY_ATTRIBUTES);
@@ -21,64 +20,40 @@ GitCommandResult GitProcess::execute(
     HANDLE stderrRead = nullptr;
     HANDLE stderrWrite = nullptr;
 
-    if (!CreatePipe(
-            &stdoutRead,
-            &stdoutWrite,
-            &securityAttributes,
-            0))
+    if (!CreatePipe(&stdoutRead, &stdoutWrite, &securityAttributes, 0))
     {
-        throw std::runtime_error(
-            "Failed to create stdout pipe.");
+        throw std::runtime_error("Failed to create stdout pipe.");
     }
 
-    if (!SetHandleInformation(
-            stdoutRead,
-            HANDLE_FLAG_INHERIT,
-            0))
+    if (!SetHandleInformation(stdoutRead, HANDLE_FLAG_INHERIT, 0))
     {
         CloseHandle(stdoutRead);
         CloseHandle(stdoutWrite);
 
-        throw std::runtime_error(
-            "Failed to configure stdout pipe.");
+        throw std::runtime_error("Failed to configure stdout pipe.");
     }
 
-    if (!CreatePipe(
-            &stderrRead,
-            &stderrWrite,
-            &securityAttributes,
-            0))
+    if (!CreatePipe(&stderrRead, &stderrWrite, &securityAttributes, 0))
     {
         CloseHandle(stdoutRead);
         CloseHandle(stdoutWrite);
 
-        throw std::runtime_error(
-            "Failed to create stderr pipe.");
+        throw std::runtime_error("Failed to create stderr pipe.");
     }
 
-    if (!SetHandleInformation(
-            stderrRead,
-            HANDLE_FLAG_INHERIT,
-            0))
+    if (!SetHandleInformation(stderrRead, HANDLE_FLAG_INHERIT, 0))
     {
         CloseHandle(stdoutRead);
         CloseHandle(stdoutWrite);
         CloseHandle(stderrRead);
         CloseHandle(stderrWrite);
 
-        throw std::runtime_error(
-            "Failed to configure stderr pipe.");
+        throw std::runtime_error("Failed to configure stderr pipe.");
     }
 
     // Prevent Git from waiting for terminal input.
-    HANDLE stdinHandle = CreateFileW(
-        L"NUL",
-        GENERIC_READ,
-        FILE_SHARE_READ | FILE_SHARE_WRITE,
-        &securityAttributes,
-        OPEN_EXISTING,
-        0,
-        nullptr);
+    HANDLE stdinHandle = CreateFileW(L"NUL", GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
+        &securityAttributes, OPEN_EXISTING, 0, nullptr);
 
     if (stdinHandle == INVALID_HANDLE_VALUE)
     {
@@ -87,21 +62,16 @@ GitCommandResult GitProcess::execute(
         CloseHandle(stderrRead);
         CloseHandle(stderrWrite);
 
-        throw std::runtime_error(
-            "Failed to open NUL for stdin.");
+        throw std::runtime_error("Failed to open NUL for stdin.");
     }
 
-    std::wstring commandLine =
-        buildCommandLine(arguments);
+    std::wstring commandLine = buildCommandLine(arguments);
 
-    std::vector<wchar_t> commandLineBuffer(
-        commandLine.begin(),
-        commandLine.end());
+    std::vector<wchar_t> commandLineBuffer(commandLine.begin(), commandLine.end());
 
     commandLineBuffer.push_back(L'\0');
 
-    std::wstring workingDirectoryWide =
-        workingDirectory.wstring();
+    std::wstring workingDirectoryWide = workingDirectory.wstring();
 
     STARTUPINFOW startupInfo{};
     startupInfo.cb = sizeof(STARTUPINFOW);
@@ -113,17 +83,8 @@ GitCommandResult GitProcess::execute(
 
     PROCESS_INFORMATION processInfo{};
 
-    BOOL created = CreateProcessW(
-        nullptr,
-        commandLineBuffer.data(),
-        nullptr,
-        nullptr,
-        TRUE,
-        CREATE_NO_WINDOW,
-        nullptr,
-        workingDirectoryWide.c_str(),
-        &startupInfo,
-        &processInfo);
+    BOOL created = CreateProcessW(nullptr, commandLineBuffer.data(), nullptr, nullptr, TRUE,
+        CREATE_NO_WINDOW, nullptr, workingDirectoryWide.c_str(), &startupInfo, &processInfo);
 
     CloseHandle(stdinHandle);
     CloseHandle(stdoutWrite);
@@ -137,8 +98,7 @@ GitCommandResult GitProcess::execute(
         CloseHandle(stderrRead);
 
         throw std::runtime_error(
-            "Failed to start git.exe. Windows error: " +
-            std::to_string(errorCode));
+            "Failed to start git.exe. Windows error: " + std::to_string(errorCode));
     }
 
     std::string stdoutText;
@@ -146,27 +106,15 @@ GitCommandResult GitProcess::execute(
 
     // Read both streams concurrently to prevent
     // pipe-buffer deadlocks.
-    std::thread stdoutThread(
-        [&]()
-        {
-            stdoutText = readPipe(stdoutRead);
-        });
+    std::thread stdoutThread([&]() { stdoutText = readPipe(stdoutRead); });
 
-    std::thread stderrThread(
-        [&]()
-        {
-            stderrText = readPipe(stderrRead);
-        });
+    std::thread stderrThread([&]() { stderrText = readPipe(stderrRead); });
 
-    WaitForSingleObject(
-        processInfo.hProcess,
-        INFINITE);
+    WaitForSingleObject(processInfo.hProcess, INFINITE);
 
     DWORD exitCode = 0;
 
-    GetExitCodeProcess(
-        processInfo.hProcess,
-        &exitCode);
+    GetExitCodeProcess(processInfo.hProcess, &exitCode);
 
     stdoutThread.join();
     stderrThread.join();
@@ -186,10 +134,8 @@ GitCommandResult GitProcess::execute(
     return result;
 }
 
-int GitProcess::executeStreaming(
-    const std::filesystem::path& workingDirectory,
-    std::span<const std::string> arguments,
-    const GitOutputCallback& outputCallback) const
+int GitProcess::executeStreaming(const std::filesystem::path& workingDirectory,
+    std::span<const std::string> arguments, const GitOutputCallback& outputCallback) const
 {
     HANDLE stdoutRead = nullptr;
     HANDLE stdoutWrite = nullptr;
@@ -198,69 +144,43 @@ int GitProcess::executeStreaming(
     HANDLE stderrWrite = nullptr;
 
     SECURITY_ATTRIBUTES securityAttributes{};
-    securityAttributes.nLength =
-        sizeof(SECURITY_ATTRIBUTES);
+    securityAttributes.nLength = sizeof(SECURITY_ATTRIBUTES);
 
     securityAttributes.bInheritHandle = TRUE;
 
-    if (!CreatePipe(
-            &stdoutRead,
-            &stdoutWrite,
-            &securityAttributes,
-            0))
+    if (!CreatePipe(&stdoutRead, &stdoutWrite, &securityAttributes, 0))
     {
-        throw std::runtime_error(
-            "CreatePipe stdout failed.");
+        throw std::runtime_error("CreatePipe stdout failed.");
     }
 
-    if (!SetHandleInformation(
-            stdoutRead,
-            HANDLE_FLAG_INHERIT,
-            0))
+    if (!SetHandleInformation(stdoutRead, HANDLE_FLAG_INHERIT, 0))
     {
         CloseHandle(stdoutRead);
         CloseHandle(stdoutWrite);
 
-        throw std::runtime_error(
-            "SetHandleInformation stdout failed.");
+        throw std::runtime_error("SetHandleInformation stdout failed.");
     }
 
-    if (!CreatePipe(
-            &stderrRead,
-            &stderrWrite,
-            &securityAttributes,
-            0))
+    if (!CreatePipe(&stderrRead, &stderrWrite, &securityAttributes, 0))
     {
         CloseHandle(stdoutRead);
         CloseHandle(stdoutWrite);
 
-        throw std::runtime_error(
-            "CreatePipe stderr failed.");
+        throw std::runtime_error("CreatePipe stderr failed.");
     }
 
-    if (!SetHandleInformation(
-            stderrRead,
-            HANDLE_FLAG_INHERIT,
-            0))
+    if (!SetHandleInformation(stderrRead, HANDLE_FLAG_INHERIT, 0))
     {
         CloseHandle(stdoutRead);
         CloseHandle(stdoutWrite);
         CloseHandle(stderrRead);
         CloseHandle(stderrWrite);
 
-        throw std::runtime_error(
-            "SetHandleInformation stderr failed.");
+        throw std::runtime_error("SetHandleInformation stderr failed.");
     }
 
-    HANDLE stdinHandle =
-        CreateFileW(
-            L"NUL",
-            GENERIC_READ,
-            FILE_SHARE_READ | FILE_SHARE_WRITE,
-            nullptr,
-            OPEN_EXISTING,
-            0,
-            nullptr);
+    HANDLE stdinHandle = CreateFileW(L"NUL", GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
+        nullptr, OPEN_EXISTING, 0, nullptr);
 
     if (stdinHandle == INVALID_HANDLE_VALUE)
     {
@@ -269,15 +189,12 @@ int GitProcess::executeStreaming(
         CloseHandle(stderrRead);
         CloseHandle(stderrWrite);
 
-        throw std::runtime_error(
-            "Failed to open NUL for stdin.");
+        throw std::runtime_error("Failed to open NUL for stdin.");
     }
 
-    std::wstring commandLine =
-        buildCommandLine(arguments);
+    std::wstring commandLine = buildCommandLine(arguments);
 
-    std::wstring directory =
-        workingDirectory.wstring();
+    std::wstring directory = workingDirectory.wstring();
 
     STARTUPINFOW startupInfo{};
     startupInfo.cb = sizeof(STARTUPINFOW);
@@ -289,18 +206,8 @@ int GitProcess::executeStreaming(
 
     PROCESS_INFORMATION processInfo{};
 
-    BOOL created =
-        CreateProcessW(
-            nullptr,
-            commandLine.data(),
-            nullptr,
-            nullptr,
-            TRUE,
-            CREATE_NO_WINDOW,
-            nullptr,
-            directory.c_str(),
-            &startupInfo,
-            &processInfo);
+    BOOL created = CreateProcessW(nullptr, commandLine.data(), nullptr, nullptr, TRUE,
+        CREATE_NO_WINDOW, nullptr, directory.c_str(), &startupInfo, &processInfo);
 
     CloseHandle(stdinHandle);
     CloseHandle(stdoutWrite);
@@ -311,59 +218,37 @@ int GitProcess::executeStreaming(
         CloseHandle(stdoutRead);
         CloseHandle(stderrRead);
 
-        throw std::runtime_error(
-            "CreateProcessW failed.");
+        throw std::runtime_error("CreateProcessW failed.");
     }
 
-    auto readOutput =
-        [&](HANDLE pipe, bool isError)
+    auto readOutput = [&](HANDLE pipe, bool isError)
+    {
+        char buffer[4096];
+
+        DWORD bytesRead = 0;
+
+        while (ReadFile(pipe, buffer, sizeof(buffer) - 1, &bytesRead, nullptr) && bytesRead > 0)
         {
-            char buffer[4096];
+            buffer[bytesRead] = '\0';
 
-            DWORD bytesRead = 0;
-
-            while (ReadFile(
-                       pipe,
-                       buffer,
-                       sizeof(buffer) - 1,
-                       &bytesRead,
-                       nullptr) &&
-                   bytesRead > 0)
+            if (outputCallback)
             {
-                buffer[bytesRead] = '\0';
-
-                if (outputCallback)
-                {
-                    outputCallback(
-                        isError,
-                        std::string(
-                            buffer,
-                            bytesRead));
-                }
+                outputCallback(isError, std::string(buffer, bytesRead));
             }
+        }
 
-            CloseHandle(pipe);
-        };
+        CloseHandle(pipe);
+    };
 
-    std::thread stdoutThread(
-        readOutput,
-        stdoutRead,
-        false);
+    std::thread stdoutThread(readOutput, stdoutRead, false);
 
-    std::thread stderrThread(
-        readOutput,
-        stderrRead,
-        true);
+    std::thread stderrThread(readOutput, stderrRead, true);
 
-    WaitForSingleObject(
-        processInfo.hProcess,
-        INFINITE);
+    WaitForSingleObject(processInfo.hProcess, INFINITE);
 
     DWORD exitCode = 0;
 
-    GetExitCodeProcess(
-        processInfo.hProcess,
-        &exitCode);
+    GetExitCodeProcess(processInfo.hProcess, &exitCode);
 
     stdoutThread.join();
     stderrThread.join();
@@ -374,52 +259,36 @@ int GitProcess::executeStreaming(
     return static_cast<int>(exitCode);
 }
 
-std::wstring GitProcess::utf8ToWide(
-    std::string_view text)
+std::wstring GitProcess::utf8ToWide(std::string_view text)
 {
     if (text.empty())
     {
         return {};
     }
 
-    int requiredSize = MultiByteToWideChar(
-        CP_UTF8,
-        0,
-        text.data(),
-        static_cast<int>(text.size()),
-        nullptr,
-        0);
+    int requiredSize =
+        MultiByteToWideChar(CP_UTF8, 0, text.data(), static_cast<int>(text.size()), nullptr, 0);
 
     if (requiredSize <= 0)
     {
-        throw std::runtime_error(
-            "Failed to convert UTF-8 to UTF-16.");
+        throw std::runtime_error("Failed to convert UTF-8 to UTF-16.");
     }
 
-    std::wstring result(
-        requiredSize,
-        L'\0');
+    std::wstring result(requiredSize, L'\0');
 
     MultiByteToWideChar(
-        CP_UTF8,
-        0,
-        text.data(),
-        static_cast<int>(text.size()),
-        result.data(),
-        requiredSize);
+        CP_UTF8, 0, text.data(), static_cast<int>(text.size()), result.data(), requiredSize);
 
     return result;
 }
 
-std::wstring GitProcess::buildCommandLine(
-    std::span<const std::string> arguments)
+std::wstring GitProcess::buildCommandLine(std::span<const std::string> arguments)
 {
     std::wstring commandLine = L"git.exe";
 
     for (const std::string& argument : arguments)
     {
-        std::wstring wideArgument =
-            utf8ToWide(argument);
+        std::wstring wideArgument = utf8ToWide(argument);
 
         commandLine += L" \"";
 
@@ -444,8 +313,7 @@ std::wstring GitProcess::buildCommandLine(
 
 std::string GitProcess::readPipe(void* pipe)
 {
-    HANDLE handle =
-        static_cast<HANDLE>(pipe);
+    HANDLE handle = static_cast<HANDLE>(pipe);
 
     std::string result;
 
@@ -455,40 +323,23 @@ std::string GitProcess::readPipe(void* pipe)
 
     while (true)
     {
-        BOOL success = ReadFile(
-            handle,
-            buffer,
-            sizeof(buffer),
-            &bytesRead,
-            nullptr);
+        BOOL success = ReadFile(handle, buffer, sizeof(buffer), &bytesRead, nullptr);
 
         if (!success || bytesRead == 0)
         {
             break;
         }
 
-        result.append(
-            buffer,
-            bytesRead);
+        result.append(buffer, bytesRead);
     }
 
     return result;
 }
 
-int GitProcess::cloneStreaming(
-    const std::string& url,
-    const std::filesystem::path& destination,
+int GitProcess::cloneStreaming(const std::string& url, const std::filesystem::path& destination,
     const GitOutputCallback& outputCallback) const
 {
-    const std::array<std::string, 3> arguments =
-    {
-        "clone",
-        url,
-        destination.filename().string()
-    };
+    const std::array<std::string, 3> arguments = {"clone", url, destination.filename().string()};
 
-    return executeStreaming(
-        destination.parent_path(),
-        arguments,
-        outputCallback);
+    return executeStreaming(destination.parent_path(), arguments, outputCallback);
 }

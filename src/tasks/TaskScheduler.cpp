@@ -2,24 +2,18 @@
 
 #include <stdexcept>
 
-TaskScheduler::TaskScheduler(
-    std::size_t workerCount)
+TaskScheduler::TaskScheduler(std::size_t workerCount)
 {
     if (workerCount == 0)
     {
-        throw std::invalid_argument(
-            "TaskScheduler requires at least one worker.");
+        throw std::invalid_argument("TaskScheduler requires at least one worker.");
     }
 
     m_workers.reserve(workerCount);
 
     for (std::size_t i = 0; i < workerCount; ++i)
     {
-        m_workers.emplace_back(
-            [this]
-            {
-                workerLoop();
-            });
+        m_workers.emplace_back([this] { workerLoop(); });
     }
 }
 
@@ -63,13 +57,7 @@ void TaskScheduler::workerLoop()
         {
             std::unique_lock<std::mutex> lock(m_mutex);
 
-            m_condition.wait(
-                lock,
-                [this]
-                {
-                    return m_stopping ||
-                           !m_tasks.empty();
-                });
+            m_condition.wait(lock, [this] { return m_stopping || !m_tasks.empty(); });
 
             if (m_stopping && m_tasks.empty())
             {

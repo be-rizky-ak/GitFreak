@@ -19,8 +19,7 @@ struct ChangedFile
 {
     std::filesystem::path path;
 
-    FileStatus status =
-        FileStatus::Modified;
+    FileStatus status = FileStatus::Modified;
 
     bool staged = false;
     bool unstaged = false;
