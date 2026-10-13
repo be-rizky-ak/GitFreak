@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../Constants.h"
 #include "../models/Branch.h"
 #include "../models/Commit.h"
 #include "../models/Diff.h"
@@ -25,7 +26,7 @@ public:
 
     RepositoryStatus status() const;
 
-    std::vector<Commit> history(int limit = 100) const;
+    std::vector<Commit> history(int limit = Config::MaxHistoryLimit) const;
 
     void stage(const std::filesystem::path& path) const;
 

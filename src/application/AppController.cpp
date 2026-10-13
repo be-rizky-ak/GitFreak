@@ -1,5 +1,6 @@
 #include "AppController.h"
 
+#include "../Constants.h"
 #include "../git/GitRepository.h"
 #include "../platform/NativeDialogs.h"
 #include "../tasks/TaskScheduler.h"
@@ -663,7 +664,7 @@ void AppController::startHistoryRefresh()
     {
         GitRepository repository(repositoryPath);
 
-        return repository.history(100);
+        return repository.history(Config::MaxHistoryLimit);
     });
 
     m_repositoryTimer.stop();
