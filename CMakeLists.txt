@@ -18,6 +18,8 @@ add_executable(GitFreak
     src/application/AppController.cpp
     src/application/Application.h
     src/application/AppController.h
+    src/application/RepositoryManager.cpp
+    src/application/RepositoryManager.h
 
     src/git/GitHistoryParser.cpp
     src/git/GitHistoryParser.h

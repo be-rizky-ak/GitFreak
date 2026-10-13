@@ -1,4 +1,4 @@
-import { Button, LineEdit, ListView } from "std-widgets.slint";
+import { Button, ComboBox, LineEdit, ListView } from "std-widgets.slint";
 import { CloneDialog } from "dialogs/CloneDialog.slint";
 import { OperationDialog } from "dialogs/OperationDialog.slint";
 import { CommitGraphRow } from "CommitGraphRow.slint";
@@ -6,10 +6,12 @@ import { CommitGraphRow } from "CommitGraphRow.slint";
 export component MainWindow inherits Window {
     title: "GitFreak";
 
-    width: 1200px;
-    height: 850px;
+    width: 1600px;
+    height: 950px;
 
     in property <string> repository-path: "";
+    in property <[string]> repository-names: [];
+    in property <[string]> repository-paths: [];
     in property <string> status-text: "No repository opened.";
     in property <string> diff-text: "Select a file to view its diff.";
     in property <[string]> changed-files: [];
@@ -20,6 +22,7 @@ export component MainWindow inherits Window {
     in property <[string]> diff-lines: [];
     in property <[int]> diff-line-types: [];
     in property <[string]> branch-names: [];
+    in property <string> current-branch-name: "";
     in property <[bool]> branch-current: [];
 
     in property <int> staged-file-count: 0;
@@ -46,11 +49,14 @@ export component MainWindow inherits Window {
     callback close-operation-dialog();
 
     callback open-repository();
+    callback select-repository(int);
+    callback remove-repository(int);
     callback stage-file(int);
     callback unstage-file(int);
     callback commit(string);
     callback select-file(int);
     callback checkout-branch(int);
+    callback checkout-branch-name(string);
     callback fetch();
     callback pull();
     callback push();
@@ -75,42 +81,27 @@ export component MainWindow inherits Window {
 
             Button {
                 text: "Open Repository";
-
-                clicked => {
-                    root.open-repository();
-                }
+                clicked => { root.open-repository(); }
             }
 
             Button {
                 text: "Fetch";
-
-                clicked => {
-                    root.fetch();
-                }
+                clicked => { root.fetch(); }
             }
 
             Button {
                 text: "Pull";
-
-                clicked => {
-                    root.pull();
-                }
+                clicked => { root.pull(); }
             }
 
             Button {
                 text: "Push";
-
-                clicked => {
-                    root.push();
-                }
+                clicked => { root.push(); }
             }
 
             Button {
                 text: "Clone";
-
-                clicked => {
-                    root.clone();
-                }
+                clicked => { root.clone(); }
             }
         }
 
@@ -130,12 +121,77 @@ export component MainWindow inherits Window {
             spacing: 12px;
 
             VerticalLayout {
-                horizontal-stretch: 1;
+                width: 350px;
                 spacing: 12px;
+
+                // Repositories
+                Rectangle {
+                    height: 180px;
+                    background: #f5f5f5;
+                    border-radius: 4px;
+                    border-width: 1px;
+                    border-color: #d0d0d0;
+
+                    VerticalLayout {
+                        padding: 8px;
+                        spacing: 6px;
+
+                        Text {
+                            text: "Repositories";
+                            font-size: 18px;
+                        }
+
+                        ListView {
+                            vertical-stretch: 1;
+
+                            for repository[index] in root.repository-names: Rectangle {
+                                height: 30px;
+                                background: transparent;
+
+                                HorizontalLayout {
+                                    spacing: 4px;
+
+                                    Rectangle {
+                                        horizontal-stretch: 1;
+                                        background: transparent;
+
+                                        TouchArea {
+                                            width: parent.width;
+                                            height: parent.height;
+
+                                            clicked => {
+                                                root.select-repository(index);
+                                            }
+                                        }
+
+                                        Text {
+                                            text: repository;
+                                            x: 6px;
+                                            width: parent.width - 12px;
+                                            height: parent.height;
+                                            font-size: 13px;
+                                            vertical-alignment: center;
+                                            overflow: elide;
+                                        }
+                                    }
+
+                                    Button {
+                                        text: "×";
+                                        width: 32px;
+
+                                        clicked => {
+                                            root.remove-repository(index);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
 
                 // Branches
                 Rectangle {
-                    height: 130px;
+                    height: 76px;
 
                     background: #f5f5f5;
                     border-radius: 4px;
@@ -147,58 +203,18 @@ export component MainWindow inherits Window {
                         spacing: 6px;
 
                         Text {
-                            text: "Branches";
-                            font-size: 18px;
+                            text: "Branch";
+                            font-size: 16px;
                         }
 
-                        ListView {
-                            vertical-stretch: 1;
+                        ComboBox {
+                            model: root.branch-names;
+                            current-value: root.current-branch-name;
+                            enabled: root.branch-names.length > 0;
 
-                            for branch[index] in root.branch-names: Rectangle {
-                                height: 28px;
-                                width: parent.width;
-
-                                TouchArea {
-                                    x: 0px;
-                                    y: 0px;
-                                    width: parent.width;
-                                    height: parent.height;
-
-                                    clicked => {
-                                        root.checkout-branch(index);
-                                    }
-                                }
-
-                                HorizontalLayout {
-                                    padding-left: 6px;
-                                    padding-right: 6px;
-                                    spacing: 6px;
-
-                                    Text {
-                                        text: root.branch-current[index]
-                                            ? "●"
-                                            : "○";
-
-                                        width: 18px;
-
-                                        color: root.branch-current[index]
-                                            ? #2e7d32
-                                            : #808080;
-
-                                        vertical-alignment: center;
-                                    }
-
-                                    Text {
-                                        text: branch != "" ? branch : "Unnamed Branch";
-
-                                        horizontal-stretch: 1;
-
-                                        font-size: 13px;
-                                        color: #252525;
-
-                                        vertical-alignment: center;
-                                        overflow: elide;
-                                    }
+                            selected(branch) => {
+                                if (branch != root.current-branch-name) {
+                                    root.checkout-branch-name(branch);
                                 }
                             }
                         }
@@ -318,8 +334,8 @@ export component MainWindow inherits Window {
             }
 
             // RIGHT: Diff
-        Rectangle {
-                horizontal-stretch: 2;
+            Rectangle {
+                horizontal-stretch: 1;
                 background: #ffffff;
                 border-radius: 4px;
                 border-width: 1px;

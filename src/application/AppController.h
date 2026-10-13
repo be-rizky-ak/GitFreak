@@ -2,6 +2,8 @@
 
 #include "MainWindow.h"
 
+#include "RepositoryManager.h"
+
 #include "../models/Branch.h"
 #include "../models/Commit.h"
 #include "../models/CommitGraph.h"
@@ -52,6 +54,7 @@ private:
     void pollBranches();
 
     void checkoutBranch(int index);
+    void checkoutBranch(const std::string& name);
     void startCheckout(const std::string& branchName);
     void pollCheckout();
 
@@ -85,6 +88,12 @@ private:
     void startFileWatcher();
     void stopFileWatcher();
     void scheduleFileRefresh();
+
+    void restoreLastRepository();
+    void openRepositoryPath(const std::filesystem::path& path);
+    void switchRepository(int index);
+    void refreshRepositoryList();
+    void removeRepository(int index);
 
     slint::ComponentHandle<MainWindow> m_window;
 
@@ -120,6 +129,8 @@ private:
     OperationState m_operationState;
     std::string m_operationPendingText;
     std::filesystem::path m_cloneDestination;
+
+    RepositoryManager m_repositoryManager;
 
     bool m_gitOperationRunning = false;
 };

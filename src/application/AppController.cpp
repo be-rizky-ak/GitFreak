@@ -85,7 +85,11 @@ AppController::AppController(
 {
     m_operationLog = std::make_shared<OperationLog>();
     m_fileWatcher = std::make_unique<FileWatcher>();
+    m_repositoryManager.load();
+
+    refreshRepositoryList();
     connectSignals();
+    restoreLastRepository();
 }
 
 AppController::~AppController()
@@ -108,6 +112,8 @@ void AppController::connectSignals()
     m_window->on_select_file([this](int index) { selectFile(index); });
 
     m_window->on_checkout_branch([this](int index) { checkoutBranch(index); });
+    m_window->on_checkout_branch_name(
+        [this](const slint::SharedString& name) { checkoutBranch(std::string(name)); });
 
     m_window->on_close_operation_dialog([this]() { closeOperationDialog(); });
 
@@ -130,6 +136,9 @@ void AppController::connectSignals()
     m_window->on_clone_dialog_browse([this]() { browseCloneDestination(); });
 
     m_window->on_clone([this]() { showCloneDialog(); });
+
+    m_window->on_select_repository([this](int index) { switchRepository(index); });
+    m_window->on_remove_repository([this](int index) { removeRepository(index); });
 }
 
 void AppController::openRepository()
@@ -137,22 +146,31 @@ void AppController::openRepository()
     auto selectedPath = NativeDialogs::pickFolder();
 
     if (!selectedPath)
-    {
         return;
-    }
+
+    openRepositoryPath(*selectedPath);
+}
+
+void AppController::openRepositoryPath(const std::filesystem::path& path)
+{
+    if (path.empty())
+        return;
+
+    stopFileWatcher();
 
     m_repositoryTimer.stop();
+
     m_repository.reset();
     m_fileOrder.clear();
 
     m_window->set_changed_files({});
     m_window->set_staged_file_count(0);
+
     m_window->set_status_text("Opening repository...");
 
-    m_window->set_repository_path(slint::SharedString(selectedPath->string()));
+    m_window->set_repository_path(slint::SharedString(path.string()));
 
-    m_openRepositoryTask =
-        m_scheduler.submit([path = *selectedPath]() -> std::optional<std::filesystem::path>
+    m_openRepositoryTask = m_scheduler.submit([path]() -> std::optional<std::filesystem::path>
     {
         GitRepository repository(path);
 
@@ -161,6 +179,77 @@ void AppController::openRepository()
 
     m_repositoryTimer.start(slint::TimerMode::Repeated, std::chrono::milliseconds(50),
         [this]() { pollRepositoryOpen(); });
+}
+
+void AppController::restoreLastRepository()
+{
+    const auto lastRepository = m_repositoryManager.lastOpened();
+
+    if (!lastRepository)
+        return;
+
+    std::error_code error;
+
+    if (!std::filesystem::exists(*lastRepository, error) ||
+        !std::filesystem::is_directory(*lastRepository, error))
+    {
+        return;
+    }
+
+    openRepositoryPath(*lastRepository);
+}
+
+void AppController::refreshRepositoryList()
+{
+    std::vector<slint::SharedString> names;
+
+    const auto& repositories = m_repositoryManager.repositories();
+
+    names.reserve(repositories.size());
+
+    for (const RepositoryEntry& repository : repositories)
+    {
+        names.emplace_back(repository.path.string());
+    }
+
+    m_window->set_repository_names(
+        std::make_shared<slint::VectorModel<slint::SharedString>>(std::move(names)));
+}
+
+void AppController::switchRepository(int index)
+{
+    const auto& repositories = m_repositoryManager.repositories();
+
+    if (index < 0 || index >= static_cast<int>(repositories.size()))
+    {
+        return;
+    }
+
+    const std::filesystem::path path = repositories[index].path;
+
+    if (m_repository &&
+        m_repository->workingDirectory().lexically_normal() == path.lexically_normal())
+    {
+        return;
+    }
+
+    openRepositoryPath(path);
+}
+
+void AppController::removeRepository(int index)
+{
+    const auto& repositories = m_repositoryManager.repositories();
+
+    if (index < 0 || static_cast<std::size_t>(index) >= repositories.size())
+    {
+        return;
+    }
+
+    const auto path = repositories[index].path;
+
+    m_repositoryManager.remove(path);
+
+    refreshRepositoryList();
 }
 
 void AppController::pollRepositoryOpen()
@@ -196,6 +285,9 @@ void AppController::pollRepositoryOpen()
         stopFileWatcher();
 
         m_repository = std::make_unique<GitRepository>(*root);
+
+        m_repositoryManager.add(*root);
+        refreshRepositoryList();
 
         m_window->set_repository_path(slint::SharedString(root->string()));
 
@@ -778,6 +870,7 @@ void AppController::pollBranches()
         std::vector<slint::SharedString> branchNames;
 
         std::vector<bool> branchCurrent;
+        std::string currentBranchName;
 
         branchNames.reserve(branches.size());
 
@@ -788,6 +881,11 @@ void AppController::pollBranches()
             branchNames.emplace_back(branch.name);
 
             branchCurrent.push_back(branch.current);
+
+            if (branch.current)
+            {
+                currentBranchName = branch.name;
+            }
         }
 
         m_branches = branches;
@@ -797,6 +895,7 @@ void AppController::pollBranches()
 
         m_window->set_branch_current(
             std::make_shared<slint::VectorModel<bool>>(std::move(branchCurrent)));
+        m_window->set_current_branch_name(slint::SharedString(currentBranchName));
     }
     catch (const std::exception& e)
     {
@@ -831,6 +930,20 @@ void AppController::checkoutBranch(int index)
     }
 
     startCheckout(branch.name);
+}
+
+void AppController::checkoutBranch(const std::string& name)
+{
+    auto it = std::find_if(
+        m_branches.begin(), m_branches.end(), [&name](const Branch& b) { return b.name == name; });
+
+    if (it == m_branches.end())
+    {
+        return; // Branch not found
+    }
+
+    int index = static_cast<int>(std::distance(m_branches.begin(), it));
+    checkoutBranch(index);
 }
 
 void AppController::startCheckout(const std::string& branchName)
@@ -1223,6 +1336,7 @@ void AppController::pollClone()
 
             // Open the newly cloned repository.
             m_repository = std::make_unique<GitRepository>(m_cloneDestination);
+            m_repositoryManager.add(m_cloneDestination);
 
             startFileWatcher();
             // Continue using the existing
