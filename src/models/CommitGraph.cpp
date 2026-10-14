@@ -100,6 +100,16 @@ std::vector<CommitGraphNode> CommitGraph::build(
         node.commit = commit;
         node.isActive = (activeCommits.find(commit.hash) != activeCommits.end());
 
+        // Record lanes that existed before processing this commit
+        std::vector<bool> laneExistedBefore(lanes.size(), false);
+        for (std::size_t i = 0; i < lanes.size(); ++i)
+        {
+            if (!lanes[i].empty())
+            {
+                laneExistedBefore[i] = true;
+            }
+        }
+
         // Find the lane where this commit is expected.
         int currentLane = findLane(commit.hash);
 
@@ -162,9 +172,20 @@ std::vector<CommitGraphNode> CommitGraph::build(
         {
             if (!lanes[lane].empty() && lane != node.lane)
             {
-                node.activeLanes.push_back(lane);
-                bool laneIsActive = (activeCommits.find(lanes[lane]) != activeCommits.end());
-                node.activeLanesActive.push_back(laneIsActive);
+                // If this lane is a parent lane of node, only include it in activeLanes if it existed
+                // before this commit (i.e. was active above this row).
+                // If it was newly created at this commit, it starts at 3/4 height (rendered by parentLanes)
+                // and should NOT be rendered from top in activeLanes.
+                bool isParentLane = (std::find(node.parentLanes.begin(), node.parentLanes.end(), lane) !=
+                                     node.parentLanes.end());
+                bool existedBefore = (lane < static_cast<int>(laneExistedBefore.size()) && laneExistedBefore[lane]);
+
+                if (!isParentLane || existedBefore)
+                {
+                    node.activeLanes.push_back(lane);
+                    bool laneIsActive = (activeCommits.find(lanes[lane]) != activeCommits.end());
+                    node.activeLanesActive.push_back(laneIsActive);
+                }
             }
         }
 

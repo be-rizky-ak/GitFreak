@@ -63,11 +63,6 @@ target_link_libraries(GitFreak
     PRIVATE Slint::Slint
 )
 
-add_executable(TestGraphEnhancements
-    src/tests/TestGraphEnhancements.cpp
-    src/models/CommitGraph.cpp
-)
-
 if(WIN32)
 add_custom_command(TARGET GitFreak POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
