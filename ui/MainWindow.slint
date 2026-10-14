@@ -1,4 +1,11 @@
-import { Button, ComboBox, LineEdit, ListView } from "std-widgets.slint";
+import {
+    Button,
+    CheckBox,
+    ComboBox,
+    LineEdit,
+    ListView,
+    ScrollView,
+} from "std-widgets.slint";
 import { CloneDialog } from "dialogs/CloneDialog.slint";
 import { OperationDialog } from "dialogs/OperationDialog.slint";
 import { CommitGraphRow } from "CommitGraphRow.slint";
@@ -292,7 +299,7 @@ export component MainWindow inherits Window {
 
                 // UPPER WORKSPACE (Branches + Changes + Diff)
                 HorizontalLayout {
-                    height: 500px;
+                    height: 400px;
                     spacing: 12px;
 
                     // MIDDLE COLUMN (Branch Dropdown Header + Changes Container)
@@ -302,14 +309,14 @@ export component MainWindow inherits Window {
 
                         // BRANCHES CARD (Dropdown only header)
                         Rectangle {
-                            height: 60px;
+                            height: 50px;
                             background: #ffffff;
                             border-radius: 6px;
                             border-width: 1px;
                             border-color: #e2e8f0;
 
                             HorizontalLayout {
-                                padding: 12px;
+                                padding: 8px;
                                 spacing: 12px;
 
                                 Text {
@@ -345,7 +352,7 @@ export component MainWindow inherits Window {
                             border-color: #e2e8f0;
 
                             VerticalLayout {
-                                padding: 12px;
+                                padding: 8px;
                                 spacing: 8px;
 
                                 Text {
@@ -369,7 +376,7 @@ export component MainWindow inherits Window {
 
                                         TouchArea {
                                             x: 0px;
-                                            width: 500px;
+                                            width: parent.width - 40px;
                                             height: parent.height;
 
                                             clicked => {
@@ -381,37 +388,24 @@ export component MainWindow inherits Window {
                                             spacing: 8px;
                                             padding: 4px;
 
+                                            CheckBox {
+                                                checked: root.changed-files-staged[index];
+                                                toggled => {
+                                                    if (self.checked) {
+                                                        root.stage-file(index);
+                                                    } else {
+                                                        root.unstage-file(index);
+                                                    }
+                                                }
+                                            }
+
                                             Text {
                                                 text: file;
                                                 font-size: 14px;
                                                 color: #252525;
                                                 vertical-alignment: center;
                                                 overflow: elide;
-
                                                 horizontal-stretch: 1;
-                                            }
-
-                                            Button {
-                                                text: "Stage";
-                                                width: 80px;
-
-                                                visible: !root.changed-files-staged[index] ||
-                                                    root.changed-files-unstaged[index];
-
-                                                clicked => {
-                                                    root.stage-file(index);
-                                                }
-                                            }
-
-                                            Button {
-                                                text: "Unstage";
-                                                width: 80px;
-
-                                                visible: root.changed-files-staged[index];
-
-                                                clicked => {
-                                                    root.unstage-file(index);
-                                                }
                                             }
                                         }
                                     }
@@ -469,14 +463,11 @@ export component MainWindow inherits Window {
                                 color: #1e293b;
                             }
 
-                            Flickable {
+                            ScrollView {
                                 vertical-stretch: 1;
 
-                                content-width: self.width;
-                                content-height: root.diff-lines.length * 20px;
-
                                 VerticalLayout {
-                                    width: parent.width;
+                                    alignment: start;
 
                                     for line[index] in root.diff-lines: Rectangle {
                                         height: 20px;
@@ -602,24 +593,30 @@ export component MainWindow inherits Window {
                         }
                     }
                 }
+            }
+        }
 
-                HorizontalLayout {
-                    spacing: 12px;
+        // FULL-WIDTH FOOTER BAR
+        HorizontalLayout {
+            padding: 8px;
+            padding-left: 12px;
+            padding-right: 12px;
+            spacing: 12px;
 
-                    Text {
-                        text: "Files: " + root.changed-files.length;
-                        color: #808080;
-                    }
+            Text {
+                text: "Files: " + root.changed-files.length;
+                color: #808080;
+                font-size: 12px;
+            }
 
-                    Rectangle {
-                        background: transparent;
-                    }
+            Rectangle {
+                background: transparent;
+            }
 
-                    Text {
-                        text: "GitFreak";
-                        color: #808080;
-                    }
-                }
+            Text {
+                text: "GitFreak";
+                color: #808080;
+                font-size: 12px;
             }
         }
     }
