@@ -1,11 +1,12 @@
 #include "GitProcess.h"
 
-#include <windows.h>
-
 #include <array>
 #include <stdexcept>
 #include <thread>
 #include <vector>
+
+#if defined(_WIN32)
+#include <windows.h>
 
 GitCommandResult GitProcess::execute(
     const std::filesystem::path& workingDirectory, std::span<const std::string> arguments) const
@@ -335,6 +336,206 @@ std::string GitProcess::readPipe(void* pipe)
 
     return result;
 }
+
+#else
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
+static std::string readFdAll(int fd)
+{
+    std::string result;
+    char buffer[8192];
+    while (true)
+    {
+        ssize_t bytesRead = read(fd, buffer, sizeof(buffer));
+        if (bytesRead <= 0)
+        {
+            break;
+        }
+        result.append(buffer, static_cast<std::size_t>(bytesRead));
+    }
+    close(fd);
+    return result;
+}
+
+GitCommandResult GitProcess::execute(
+    const std::filesystem::path& workingDirectory, std::span<const std::string> arguments) const
+{
+    int stdoutPipe[2];
+    int stderrPipe[2];
+
+    if (pipe(stdoutPipe) < 0 || pipe(stderrPipe) < 0)
+    {
+        throw std::runtime_error("Failed to create pipes.");
+    }
+
+    pid_t pid = fork();
+    if (pid < 0)
+    {
+        close(stdoutPipe[0]); close(stdoutPipe[1]);
+        close(stderrPipe[0]); close(stderrPipe[1]);
+        throw std::runtime_error("fork failed.");
+    }
+
+    if (pid == 0)
+    {
+        // Child process
+        close(stdoutPipe[0]);
+        close(stderrPipe[0]);
+
+        dup2(stdoutPipe[1], STDOUT_FILENO);
+        dup2(stderrPipe[1], STDERR_FILENO);
+
+        close(stdoutPipe[1]);
+        close(stderrPipe[1]);
+
+        if (!workingDirectory.empty())
+        {
+            if (chdir(workingDirectory.c_str()) != 0)
+            {
+                _exit(127);
+            }
+        }
+
+        std::vector<const char*> argv;
+        argv.push_back("git");
+        for (const auto& arg : arguments)
+        {
+            argv.push_back(arg.c_str());
+        }
+        argv.push_back(nullptr);
+
+        execvp("git", const_cast<char* const*>(argv.data()));
+        _exit(127);
+    }
+
+    // Parent process
+    close(stdoutPipe[1]);
+    close(stderrPipe[1]);
+
+    std::string stdoutText;
+    std::string stderrText;
+
+    std::thread stdoutThread([&]() { stdoutText = readFdAll(stdoutPipe[0]); });
+    std::thread stderrThread([&]() { stderrText = readFdAll(stderrPipe[0]); });
+
+    int status = 0;
+    waitpid(pid, &status, 0);
+
+    stdoutThread.join();
+    stderrThread.join();
+
+    int exitCode = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+
+    GitCommandResult result;
+    result.exitCode = exitCode;
+    result.stdoutText = std::move(stdoutText);
+    result.stderrText = std::move(stderrText);
+    return result;
+}
+
+int GitProcess::executeStreaming(const std::filesystem::path& workingDirectory,
+    std::span<const std::string> arguments, const GitOutputCallback& outputCallback) const
+{
+    int stdoutPipe[2];
+    int stderrPipe[2];
+
+    if (pipe(stdoutPipe) < 0 || pipe(stderrPipe) < 0)
+    {
+        throw std::runtime_error("Failed to create pipes.");
+    }
+
+    pid_t pid = fork();
+    if (pid < 0)
+    {
+        close(stdoutPipe[0]); close(stdoutPipe[1]);
+        close(stderrPipe[0]); close(stderrPipe[1]);
+        throw std::runtime_error("fork failed.");
+    }
+
+    if (pid == 0)
+    {
+        close(stdoutPipe[0]);
+        close(stderrPipe[0]);
+
+        dup2(stdoutPipe[1], STDOUT_FILENO);
+        dup2(stderrPipe[1], STDERR_FILENO);
+
+        close(stdoutPipe[1]);
+        close(stderrPipe[1]);
+
+        if (!workingDirectory.empty())
+        {
+            if (chdir(workingDirectory.c_str()) != 0)
+            {
+                _exit(127);
+            }
+        }
+
+        std::vector<const char*> argv;
+        argv.push_back("git");
+        for (const auto& arg : arguments)
+        {
+            argv.push_back(arg.c_str());
+        }
+        argv.push_back(nullptr);
+
+        execvp("git", const_cast<char* const*>(argv.data()));
+        _exit(127);
+    }
+
+    close(stdoutPipe[1]);
+    close(stderrPipe[1]);
+
+    auto readOutput = [&](int fd, bool isError)
+    {
+        char buffer[4096];
+        while (true)
+        {
+            ssize_t bytesRead = read(fd, buffer, sizeof(buffer) - 1);
+            if (bytesRead <= 0)
+            {
+                break;
+            }
+            buffer[bytesRead] = '\0';
+            if (outputCallback)
+            {
+                outputCallback(isError, std::string(buffer, static_cast<std::size_t>(bytesRead)));
+            }
+        }
+        close(fd);
+    };
+
+    std::thread stdoutThread(readOutput, stdoutPipe[0], false);
+    std::thread stderrThread(readOutput, stderrPipe[0], true);
+
+    int status = 0;
+    waitpid(pid, &status, 0);
+
+    stdoutThread.join();
+    stderrThread.join();
+
+    return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+}
+
+std::wstring GitProcess::utf8ToWide(std::string_view text)
+{
+    return std::wstring(text.begin(), text.end());
+}
+
+std::wstring GitProcess::buildCommandLine(std::span<const std::string> arguments)
+{
+    return {};
+}
+
+std::string GitProcess::readPipe(void* pipe)
+{
+    return {};
+}
+
+#endif
 
 int GitProcess::cloneStreaming(const std::string& url, const std::filesystem::path& destination,
     const GitOutputCallback& outputCallback) const

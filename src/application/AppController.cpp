@@ -1477,94 +1477,42 @@ void AppController::updateHistoryGraph(const std::vector<Commit>& commits)
     std::vector<CommitGraphNode> graph = CommitGraph::build(commits);
 
     std::vector<int> lanes;
-    std::vector<int> parentLane0;
-    std::vector<int> parentLane1;
-    std::vector<int> parentCounts;
-
-    std::vector<int> activeLane0;
-    std::vector<int> activeLane1;
-    std::vector<int> activeLaneCounts;
-
     lanes.reserve(graph.size());
-    parentLane0.reserve(graph.size());
-    parentLane1.reserve(graph.size());
-    parentCounts.reserve(graph.size());
 
-    activeLane0.reserve(graph.size());
-    activeLane1.reserve(graph.size());
-    activeLaneCounts.reserve(graph.size());
+    auto parentLanesModel =
+        std::make_shared<slint::VectorModel<std::shared_ptr<slint::Model<int>>>>();
+
+    auto activeLanesModel =
+        std::make_shared<slint::VectorModel<std::shared_ptr<slint::Model<int>>>>();
+
+    int maxLane = 0;
 
     for (const CommitGraphNode& node : graph)
     {
         lanes.push_back(node.lane);
+        maxLane = std::max(maxLane, node.lane);
 
-        const int parentCount = static_cast<int>(node.parentLanes.size());
+        auto rowParents = std::make_shared<slint::VectorModel<int>>();
+        for (int parentLane : node.parentLanes)
+        {
+            rowParents->push_back(parentLane);
+            maxLane = std::max(maxLane, parentLane);
+        }
+        parentLanesModel->push_back(rowParents);
 
-        parentCounts.push_back(parentCount);
-
-        // First parent.
-        if (parentCount > 0)
+        auto rowActives = std::make_shared<slint::VectorModel<int>>();
+        for (int activeLane : node.activeLanes)
         {
-            parentLane0.push_back(node.parentLanes[0]);
+            rowActives->push_back(activeLane);
+            maxLane = std::max(maxLane, activeLane);
         }
-        else
-        {
-            parentLane0.push_back(node.lane);
-        }
-
-        // Second parent.
-        if (parentCount > 1)
-        {
-            parentLane1.push_back(node.parentLanes[1]);
-        }
-        else
-        {
-            parentLane1.push_back(node.lane);
-        }
-
-        // Active lanes.
-        const int activeCount = static_cast<int>(node.activeLanes.size());
-
-        activeLaneCounts.push_back(activeCount);
-
-        if (activeCount > 0)
-        {
-            activeLane0.push_back(node.activeLanes[0]);
-        }
-        else
-        {
-            activeLane0.push_back(node.lane);
-        }
-
-        if (activeCount > 1)
-        {
-            activeLane1.push_back(node.activeLanes[1]);
-        }
-        else
-        {
-            activeLane1.push_back(node.lane);
-        }
+        activeLanesModel->push_back(rowActives);
     }
 
     m_window->set_history_lanes(std::make_shared<slint::VectorModel<int>>(std::move(lanes)));
-
-    m_window->set_history_parent_lanes(
-        std::make_shared<slint::VectorModel<int>>(std::move(parentLane0)));
-
-    m_window->set_history_parent_lanes_1(
-        std::make_shared<slint::VectorModel<int>>(std::move(parentLane1)));
-
-    m_window->set_history_parent_counts(
-        std::make_shared<slint::VectorModel<int>>(std::move(parentCounts)));
-
-    m_window->set_history_active_lanes_0(
-        std::make_shared<slint::VectorModel<int>>(std::move(activeLane0)));
-
-    m_window->set_history_active_lanes_1(
-        std::make_shared<slint::VectorModel<int>>(std::move(activeLane1)));
-
-    m_window->set_history_active_lane_counts(
-        std::make_shared<slint::VectorModel<int>>(std::move(activeLaneCounts)));
+    m_window->set_history_parent_lanes(parentLanesModel);
+    m_window->set_history_active_lanes(activeLanesModel);
+    m_window->set_history_max_lane(maxLane);
 }
 
 void AppController::closeOperationDialog()

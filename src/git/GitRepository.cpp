@@ -126,7 +126,7 @@ std::vector<Commit> GitRepository::history(int limit) const
     const std::string format = "--pretty=format:%H%x00%P%x00%an%x00%ae%x00%ad%x00%s%x00";
 
     const std::array<std::string, 5> arguments = {
-        "log", "HEAD", limitArgument, "--date=iso-strict", format};
+        "log", "--all", limitArgument, "--date=iso-strict", format};
 
     GitCommandResult result = m_gitProcess.execute(m_workingDirectory, arguments);
 

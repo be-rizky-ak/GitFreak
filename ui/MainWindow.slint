@@ -4,7 +4,7 @@ import {
     ComboBox,
     LineEdit,
     ListView,
-    ScrollView,
+    ScrollView
 } from "std-widgets.slint";
 import { CloneDialog } from "dialogs/CloneDialog.slint";
 import { OperationDialog } from "dialogs/OperationDialog.slint";
@@ -36,12 +36,9 @@ export component MainWindow inherits Window {
     in property <int> staged-file-count: 0;
     in property <int> history-count: 0;
     in property <[int]> history-lanes: [];
-    in property <[int]> history-parent-lanes: [];
-    in property <[int]> history-parent-lanes-1: [];
-    in property <[int]> history-parent-counts: [];
-    in property <[int]> history-active-lanes-0: [];
-    in property <[int]> history-active-lanes-1: [];
-    in property <[int]> history-active-lane-counts: [];
+    in property <[[int]]> history-parent-lanes: [];
+    in property <[[int]]> history-active-lanes: [];
+    in property <int> history-max-lane: 0;
 
     in property <bool> operation-visible: false;
     in property <string> operation-title: "";
@@ -550,22 +547,15 @@ export component MainWindow inherits Window {
                                     spacing: 8px;
 
                                     CommitGraphRow {
-                                        width: 120px;
                                         height: parent.height;
 
                                         lane: root.history-lanes[index];
 
-                                        parent-lane-0: root.history-parent-lanes[index];
+                                        parent-lanes: root.history-parent-lanes[index];
 
-                                        parent-lane-1: root.history-parent-lanes-1[index];
+                                        active-lanes: root.history-active-lanes[index];
 
-                                        parent-count: root.history-parent-counts[index];
-
-                                        active-lane-0: root.history-active-lanes-0[index];
-
-                                        active-lane-1: root.history-active-lanes-1[index];
-
-                                        active-lane-count: root.history-active-lane-counts[index];
+                                        max-lane: root.history-max-lane;
                                     }
 
                                     VerticalLayout {
