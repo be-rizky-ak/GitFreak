@@ -231,7 +231,7 @@ export component CommitGraphRow inherits Rectangle {
         property <length> line-w: root.get-line-width(true);
         property <length> line-off: root.get-line-x-offset(true);
 
-        visible: p-lane != root.lane && root.parent-lanes-active[i] && !root.parent-lanes-in-active[i];
+        visible: p-lane != root.lane && root.parent-lanes-active[i];
 
         width: line-w;
         x: parent-x - line-off;

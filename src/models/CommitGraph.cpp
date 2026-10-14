@@ -173,10 +173,7 @@ std::vector<CommitGraphNode> CommitGraph::build(
             }
             else
             {
-                if (parentIsActive)
-                {
-                    lanes[parentLane].isActive = true;
-                }
+                // Lane already exists for parent; keep its upper line isActive state intact.
             }
 
             if (std::find(node.parentLanes.begin(), node.parentLanes.end(), parentLane) ==
