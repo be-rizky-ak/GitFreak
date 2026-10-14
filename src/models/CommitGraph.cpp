@@ -159,7 +159,7 @@ std::vector<CommitGraphNode> CommitGraph::build(
                 node.parentLanes.end())
             {
                 node.parentLanes.push_back(parentLane);
-                bool parentIsActive = (activeCommits.find(parent) != activeCommits.end());
+                bool parentIsActive = node.isActive && (activeCommits.find(parent) != activeCommits.end());
                 node.parentLanesActive.push_back(parentIsActive);
             }
         }

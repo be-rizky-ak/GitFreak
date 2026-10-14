@@ -1125,7 +1125,7 @@ void AppController::startFetch()
 
     const std::filesystem::path repositoryPath = m_repository->workingDirectory();
 
-    startOperation("Fetch", "git fetch");
+    startOperation("Fetch", "git fetch --all");
 
     std::shared_ptr<OperationLog> operationLog = m_operationLog;
 

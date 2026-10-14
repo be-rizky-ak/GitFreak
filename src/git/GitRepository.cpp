@@ -297,7 +297,7 @@ std::vector<Remote> GitRepository::remotes() const
 
 int GitRepository::fetchStreaming(const GitOutputCallback& outputCallback) const
 {
-    const std::array<std::string, 1> arguments = {"fetch"};
+    const std::array<std::string, 2> arguments = {"fetch", "--all"};
 
     return m_gitProcess.executeStreaming(m_workingDirectory, arguments, outputCallback);
 }
