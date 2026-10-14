@@ -60,14 +60,20 @@ std::vector<CommitGraphNode> CommitGraph::build(
         }
     }
 
-    // Each lane contains the commit hash expected to appear next in that lane.
-    std::vector<std::string> lanes;
+    // Each lane contains state (target hash and whether the edge leading to it is active)
+    struct LaneState
+    {
+        std::string targetHash;
+        bool isActive = false;
+    };
+
+    std::vector<LaneState> lanes;
 
     auto findLane = [&lanes](const std::string& hash) -> int
     {
         for (int lane = 0; lane < static_cast<int>(lanes.size()); ++lane)
         {
-            if (lanes[lane] == hash)
+            if (lanes[lane].targetHash == hash)
             {
                 return lane;
             }
@@ -76,19 +82,20 @@ std::vector<CommitGraphNode> CommitGraph::build(
         return -1;
     };
 
-    auto createLane = [&lanes](const std::string& hash) -> int
+    auto createLane = [&lanes](const std::string& hash, bool active) -> int
     {
         for (int lane = 0; lane < static_cast<int>(lanes.size()); ++lane)
         {
-            if (lanes[lane].empty())
+            if (lanes[lane].targetHash.empty())
             {
-                lanes[lane] = hash;
+                lanes[lane].targetHash = hash;
+                lanes[lane].isActive = active;
 
                 return lane;
             }
         }
 
-        lanes.push_back(hash);
+        lanes.push_back({hash, active});
 
         return static_cast<int>(lanes.size() - 1);
     };
@@ -104,7 +111,7 @@ std::vector<CommitGraphNode> CommitGraph::build(
         std::vector<bool> laneExistedBefore(lanes.size(), false);
         for (std::size_t i = 0; i < lanes.size(); ++i)
         {
-            if (!lanes[i].empty())
+            if (!lanes[i].targetHash.empty())
             {
                 laneExistedBefore[i] = true;
             }
@@ -116,17 +123,26 @@ std::vector<CommitGraphNode> CommitGraph::build(
         if (currentLane >= 0)
         {
             node.hasUpperLine = true;
+            node.isUpperLineActive = lanes[currentLane].isActive;
         }
         else
         {
             node.hasUpperLine = false;
-            currentLane = createLane(commit.hash);
+            node.isUpperLineActive = node.isActive;
+            currentLane = createLane(commit.hash, node.isActive);
         }
 
         node.lane = currentLane;
 
-        // This commit has now been consumed.
-        lanes[currentLane].clear();
+        // Clear ALL lane entries targeting this commit hash, as this commit has now been reached.
+        for (auto& l : lanes)
+        {
+            if (l.targetHash == commit.hash)
+            {
+                l.targetHash.clear();
+                l.isActive = false;
+            }
+        }
 
         // Assign lanes to all parents.
         for (std::size_t parentIndex = 0; parentIndex < commit.parents.size(); ++parentIndex)
@@ -138,6 +154,7 @@ std::vector<CommitGraphNode> CommitGraph::build(
                 continue;
             }
 
+            bool parentIsActive = node.isActive && (activeCommits.find(parent) != activeCommits.end());
             int parentLane = findLane(parent);
 
             if (parentLane < 0)
@@ -146,12 +163,19 @@ std::vector<CommitGraphNode> CommitGraph::build(
                 {
                     // First parent continues on the current lane.
                     parentLane = currentLane;
-                    lanes[parentLane] = parent;
+                    lanes[parentLane] = {parent, parentIsActive};
                 }
                 else
                 {
                     // Additional parents create additional lanes.
-                    parentLane = createLane(parent);
+                    parentLane = createLane(parent, parentIsActive);
+                }
+            }
+            else
+            {
+                if (parentIsActive)
+                {
+                    lanes[parentLane].isActive = true;
                 }
             }
 
@@ -159,7 +183,6 @@ std::vector<CommitGraphNode> CommitGraph::build(
                 node.parentLanes.end())
             {
                 node.parentLanes.push_back(parentLane);
-                bool parentIsActive = node.isActive && (activeCommits.find(parent) != activeCommits.end());
                 node.parentLanesActive.push_back(parentIsActive);
             }
         }
@@ -170,7 +193,7 @@ std::vector<CommitGraphNode> CommitGraph::build(
 
         for (int lane = 0; lane < static_cast<int>(lanes.size()); ++lane)
         {
-            if (!lanes[lane].empty() && lane != node.lane)
+            if (!lanes[lane].targetHash.empty() && lane != node.lane)
             {
                 // If this lane is a parent lane of node, only include it in activeLanes if it existed
                 // before this commit (i.e. was active above this row).
@@ -183,10 +206,16 @@ std::vector<CommitGraphNode> CommitGraph::build(
                 if (!isParentLane || existedBefore)
                 {
                     node.activeLanes.push_back(lane);
-                    bool laneIsActive = (activeCommits.find(lanes[lane]) != activeCommits.end());
-                    node.activeLanesActive.push_back(laneIsActive);
+                    node.activeLanesActive.push_back(lanes[lane].isActive);
                 }
             }
+        }
+
+        for (int parentLane : node.parentLanes)
+        {
+            bool inActive = (std::find(node.activeLanes.begin(), node.activeLanes.end(), parentLane) !=
+                             node.activeLanes.end());
+            node.parentLanesInActive.push_back(inActive);
         }
 
         result.push_back(std::move(node));

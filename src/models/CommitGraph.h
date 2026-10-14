@@ -10,10 +10,12 @@ struct CommitGraphNode
 
     int lane = 0;
     bool hasUpperLine = false;
+    bool isUpperLineActive = true;
     bool isActive = true;
 
     std::vector<int> parentLanes;
     std::vector<bool> parentLanesActive;
+    std::vector<bool> parentLanesInActive;
 
     std::vector<int> activeLanes;
     std::vector<bool> activeLanesActive;
