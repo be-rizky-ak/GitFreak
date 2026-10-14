@@ -15,6 +15,7 @@ struct CommitGraphNode
 
     std::vector<int> parentLanes;
     std::vector<bool> parentLanesActive;
+    std::vector<bool> parentLanesInActive;
 
     std::vector<int> activeLanes;
     std::vector<bool> activeLanesActive;

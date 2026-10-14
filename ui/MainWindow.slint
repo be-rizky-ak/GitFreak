@@ -41,6 +41,7 @@ export component MainWindow inherits Window {
     in property <[bool]> history-is-upper-line-active: [];
     in property <[[int]]> history-parent-lanes: [];
     in property <[[bool]]> history-parent-lanes-active: [];
+    in property <[[bool]]> history-parent-lanes-in-active: [];
     in property <[[int]]> history-active-lanes: [];
     in property <[[bool]]> history-active-lanes-active: [];
     in property <int> history-max-lane: 0;
@@ -565,6 +566,8 @@ export component MainWindow inherits Window {
                                         parent-lanes: root.history-parent-lanes[index];
 
                                         parent-lanes-active: root.history-parent-lanes-active[index];
+
+                                        parent-lanes-in-active: root.history-parent-lanes-in-active[index];
 
                                         active-lanes: root.history-active-lanes[index];
 
