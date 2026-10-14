@@ -1490,8 +1490,6 @@ void AppController::updateHistoryGraph(const std::vector<Commit>& commits)
         std::make_shared<slint::VectorModel<std::shared_ptr<slint::Model<int>>>>();
     auto parentLanesActiveModel =
         std::make_shared<slint::VectorModel<std::shared_ptr<slint::Model<bool>>>>();
-    auto parentLanesInActiveModel =
-        std::make_shared<slint::VectorModel<std::shared_ptr<slint::Model<bool>>>>();
 
     auto activeLanesModel =
         std::make_shared<slint::VectorModel<std::shared_ptr<slint::Model<int>>>>();
@@ -1510,18 +1508,15 @@ void AppController::updateHistoryGraph(const std::vector<Commit>& commits)
 
         auto rowParents = std::make_shared<slint::VectorModel<int>>();
         auto rowParentsActive = std::make_shared<slint::VectorModel<bool>>();
-        auto rowParentsInActive = std::make_shared<slint::VectorModel<bool>>();
         for (std::size_t i = 0; i < node.parentLanes.size(); ++i)
         {
             int parentLane = node.parentLanes[i];
             rowParents->push_back(parentLane);
             rowParentsActive->push_back(node.parentLanesActive[i]);
-            rowParentsInActive->push_back(node.parentLanesInActive[i]);
             maxLane = std::max(maxLane, parentLane);
         }
         parentLanesModel->push_back(rowParents);
         parentLanesActiveModel->push_back(rowParentsActive);
-        parentLanesInActiveModel->push_back(rowParentsInActive);
 
         auto rowActives = std::make_shared<slint::VectorModel<int>>();
         auto rowActivesActive = std::make_shared<slint::VectorModel<bool>>();
@@ -1546,7 +1541,6 @@ void AppController::updateHistoryGraph(const std::vector<Commit>& commits)
 
     m_window->set_history_parent_lanes(parentLanesModel);
     m_window->set_history_parent_lanes_active(parentLanesActiveModel);
-    m_window->set_history_parent_lanes_in_active(parentLanesInActiveModel);
 
     m_window->set_history_active_lanes(activeLanesModel);
     m_window->set_history_active_lanes_active(activeLanesActiveModel);

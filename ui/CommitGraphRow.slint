@@ -6,7 +6,6 @@ export component CommitGraphRow inherits Rectangle {
 
     in property <[int]> parent-lanes: [];
     in property <[bool]> parent-lanes-active: [];
-    in property <[bool]> parent-lanes-in-active: [];
 
     in property <[int]> active-lanes: [];
     in property <[bool]> active-lanes-active: [];
@@ -60,7 +59,7 @@ export component CommitGraphRow inherits Rectangle {
         + root.lane * root.lane-spacing * 1px;
 
     // =================================================
-    // PASS 1: VERTICAL BRANCH LANES (Background)
+    // PASS 1: INACTIVE LINES (Background layer)
     // =================================================
 
     // 1. Current Lane Incoming (Top to Node) - Inactive
@@ -75,19 +74,7 @@ export component CommitGraphRow inherits Rectangle {
         background: root.get-lane-color(root.lane, false);
     }
 
-    // 2. Current Lane Incoming (Top to Node) - Active
-    Rectangle {
-        visible: root.lane >= 0 && root.has-upper-line && root.is-upper-line-active;
-
-        width: root.get-line-width(true);
-        x: root.current-x - root.get-line-x-offset(true);
-        y: 0px;
-        height: root.height / 2 + 1px;
-
-        background: root.get-lane-color(root.lane, true);
-    }
-
-    // 3. Active Branch Lanes - Inactive
+    // 2. Active Branch Lanes - Inactive
     for active-lane[i] in root.active-lanes: Rectangle {
         visible: active-lane != root.lane && !root.active-lanes-active[i];
 
@@ -99,23 +86,7 @@ export component CommitGraphRow inherits Rectangle {
         background: root.get-lane-color(active-lane, false);
     }
 
-    // 4. Active Branch Lanes - Active
-    for active-lane[i] in root.active-lanes: Rectangle {
-        visible: active-lane != root.lane && root.active-lanes-active[i];
-
-        width: root.get-line-width(true);
-        x: (root.graph-left + active-lane * root.lane-spacing) * 1px - root.get-line-x-offset(true);
-        y: 0px;
-        height: root.height;
-
-        background: root.get-lane-color(active-lane, true);
-    }
-
-    // =================================================
-    // PASS 2: PARENT CONNECTIONS (Bridges & Stems)
-    // =================================================
-
-    // 1. Parent Connections - Case 1: Straight down - Inactive
+    // 3. Parent Connections - Case 1: Straight down - Inactive
     for p-lane[i] in root.parent-lanes: Rectangle {
         visible: p-lane == root.lane && !root.parent-lanes-active[i];
 
@@ -127,19 +98,7 @@ export component CommitGraphRow inherits Rectangle {
         background: root.get-lane-color(root.lane, false);
     }
 
-    // 2. Parent Connections - Case 1: Straight down - Active
-    for p-lane[i] in root.parent-lanes: Rectangle {
-        visible: p-lane == root.lane && root.parent-lanes-active[i];
-
-        width: root.get-line-width(true);
-        x: root.current-x - root.get-line-x-offset(true);
-        y: root.height / 2 - 1px;
-        height: root.height / 2 + 2px;
-
-        background: root.get-lane-color(root.lane, true);
-    }
-
-    // 3. Parent Connections - Case 2: Stem down - Inactive
+    // 4. Parent Connections - Case 2: Stem down - Inactive
     for p-lane[i] in root.parent-lanes: Rectangle {
         visible: p-lane != root.lane && !root.parent-lanes-active[i];
 
@@ -149,18 +108,6 @@ export component CommitGraphRow inherits Rectangle {
         height: root.height / 4 + 2px;
 
         background: root.get-lane-color(root.lane, false);
-    }
-
-    // 4. Parent Connections - Case 2: Stem down - Active
-    for p-lane[i] in root.parent-lanes: Rectangle {
-        visible: p-lane != root.lane && root.parent-lanes-active[i];
-
-        width: root.get-line-width(true);
-        x: root.current-x - root.get-line-x-offset(true);
-        y: root.height / 2 - 1px;
-        height: root.height / 4 + 2px;
-
-        background: root.get-lane-color(root.lane, true);
     }
 
     // 5. Parent Connections - Case 2: Horizontal bridge - Inactive
@@ -186,7 +133,75 @@ export component CommitGraphRow inherits Rectangle {
         background: root.get-lane-color(p-lane, false);
     }
 
-    // 6. Parent Connections - Case 2: Horizontal bridge - Active
+    // 6. Parent Connections - Case 2: Vertical segment down in parent lane - Inactive
+    for p-lane[i] in root.parent-lanes: Rectangle {
+        property <length> parent-x: (root.graph-left + p-lane * root.lane-spacing) * 1px;
+        property <length> line-w: root.get-line-width(false);
+        property <length> line-off: root.get-line-x-offset(false);
+
+        visible: p-lane != root.lane && !root.parent-lanes-active[i];
+
+        width: line-w;
+        x: parent-x - line-off;
+        y: root.height * 3 / 4 - line-off;
+        height: root.height / 4 + line-off + 1px;
+
+        background: root.get-lane-color(p-lane, false);
+    }
+
+    // =================================================
+    // PASS 2: ACTIVE LINES (Foreground / Foreground layer)
+    // =================================================
+
+    // 1. Current Lane Incoming (Top to Node) - Active
+    Rectangle {
+        visible: root.lane >= 0 && root.has-upper-line && root.is-upper-line-active;
+
+        width: root.get-line-width(true);
+        x: root.current-x - root.get-line-x-offset(true);
+        y: 0px;
+        height: root.height / 2 + 1px;
+
+        background: root.get-lane-color(root.lane, true);
+    }
+
+    // 2. Active Branch Lanes - Active
+    for active-lane[i] in root.active-lanes: Rectangle {
+        visible: active-lane != root.lane && root.active-lanes-active[i];
+
+        width: root.get-line-width(true);
+        x: (root.graph-left + active-lane * root.lane-spacing) * 1px - root.get-line-x-offset(true);
+        y: 0px;
+        height: root.height;
+
+        background: root.get-lane-color(active-lane, true);
+    }
+
+    // 3. Parent Connections - Case 1: Straight down - Active
+    for p-lane[i] in root.parent-lanes: Rectangle {
+        visible: p-lane == root.lane && root.parent-lanes-active[i];
+
+        width: root.get-line-width(true);
+        x: root.current-x - root.get-line-x-offset(true);
+        y: root.height / 2 - 1px;
+        height: root.height / 2 + 2px;
+
+        background: root.get-lane-color(root.lane, true);
+    }
+
+    // 4. Parent Connections - Case 2: Stem down - Active
+    for p-lane[i] in root.parent-lanes: Rectangle {
+        visible: p-lane != root.lane && root.parent-lanes-active[i];
+
+        width: root.get-line-width(true);
+        x: root.current-x - root.get-line-x-offset(true);
+        y: root.height / 2 - 1px;
+        height: root.height / 4 + 2px;
+
+        background: root.get-lane-color(root.lane, true);
+    }
+
+    // 5. Parent Connections - Case 2: Horizontal bridge - Active
     for p-lane[i] in root.parent-lanes: Rectangle {
         property <length> parent-x: (root.graph-left + p-lane * root.lane-spacing) * 1px;
         property <length> line-w: root.get-line-width(true);
@@ -209,23 +224,7 @@ export component CommitGraphRow inherits Rectangle {
         background: root.get-lane-color(p-lane, true);
     }
 
-    // 7. Parent Connections - Case 2: Vertical segment down in parent lane - Inactive
-    for p-lane[i] in root.parent-lanes: Rectangle {
-        property <length> parent-x: (root.graph-left + p-lane * root.lane-spacing) * 1px;
-        property <length> line-w: root.get-line-width(false);
-        property <length> line-off: root.get-line-x-offset(false);
-
-        visible: p-lane != root.lane && !root.parent-lanes-active[i] && !root.parent-lanes-in-active[i];
-
-        width: line-w;
-        x: parent-x - line-off;
-        y: root.height * 3 / 4 - line-off;
-        height: root.height / 4 + line-off + 1px;
-
-        background: root.get-lane-color(p-lane, false);
-    }
-
-    // 8. Parent Connections - Case 2: Vertical segment down in parent lane - Active
+    // 6. Parent Connections - Case 2: Vertical segment down in parent lane - Active
     for p-lane[i] in root.parent-lanes: Rectangle {
         property <length> parent-x: (root.graph-left + p-lane * root.lane-spacing) * 1px;
         property <length> line-w: root.get-line-width(true);
