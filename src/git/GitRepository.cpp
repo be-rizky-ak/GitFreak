@@ -106,6 +106,14 @@ void GitRepository::commit(const std::string& message) const
     }
 }
 
+int GitRepository::commitStreaming(
+    const std::string& message, const GitOutputCallback& outputCallback) const
+{
+    const std::array<std::string, 3> arguments = {"commit", "-m", message};
+
+    return m_gitProcess.executeStreaming(m_workingDirectory, arguments, outputCallback);
+}
+
 std::vector<Commit> GitRepository::history(int limit) const
 {
     if (limit <= 0)

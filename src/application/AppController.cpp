@@ -597,12 +597,7 @@ void AppController::commit(const std::string& message)
         return;
     }
 
-    if (message.empty())
-    {
-        return;
-    }
-
-    if (m_repositoryStatus.files.empty())
+    if (message.empty() || m_repositoryStatus.files.empty())
     {
         return;
     }
@@ -622,15 +617,24 @@ void AppController::commit(const std::string& message)
         return;
     }
 
+    if (m_commitTask.valid() &&
+        m_commitTask.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
+    {
+        return;
+    }
+
+    startOperation("Commit", "git commit -m \"" + message + "\"");
+
+    std::shared_ptr<OperationLog> operationLog = m_operationLog;
     const std::filesystem::path repositoryPath = m_repository->workingDirectory();
 
-    m_window->set_status_text("Committing...");
-
-    m_commitTask = m_scheduler.submit([repositoryPath, message]()
+    m_commitTask = m_scheduler.submit([repositoryPath, message, operationLog]()
     {
         GitRepository repository(repositoryPath);
 
-        repository.commit(message);
+        return repository.commitStreaming(message,
+            [operationLog](bool isError, const std::string& text)
+        { operationLog->append(isError, text); });
     });
 
     m_repositoryTimer.stop();
@@ -656,20 +660,35 @@ void AppController::pollCommit()
 
     try
     {
-        m_commitTask.get();
+        const int exitCode = m_commitTask.get();
 
-        m_window->set_status_text("Commit created.");
-        if (m_repository)
+        if (exitCode == 0)
         {
-            const auto path = m_repository->workingDirectory();
-            m_statusCache.invalidate(path);
-            m_commitCache.invalidate(path);
-        }
+            finishOperation(true, 0);
 
-        startStatusRefresh();
+            m_window->set_status_text("Commit created.");
+            if (m_repository)
+            {
+                const auto path = m_repository->workingDirectory();
+                m_statusCache.invalidate(path);
+                m_commitCache.invalidate(path);
+            }
+
+            startStatusRefresh();
+        }
+        else
+        {
+            finishOperation(false, exitCode);
+
+            m_window->set_status_text("Commit failed.");
+        }
     }
     catch (const std::exception& e)
     {
+        appendOperationLog(true, e.what());
+
+        finishOperation(false, 1);
+
         m_window->set_status_text(slint::SharedString(std::string("Commit failed: ") + e.what()));
     }
 }
@@ -1568,43 +1587,53 @@ void AppController::pollOperationLog()
     }
 
     std::vector<std::string> entries = m_operationLog->consume();
-
     bool changed = false;
 
     for (const std::string& entry : entries)
     {
-        m_operationPendingText += entry;
-
-        std::size_t newlinePosition = 0;
-
-        while ((newlinePosition = m_operationPendingText.find('\n')) != std::string::npos)
+        for (char c : entry)
         {
-            std::string line = m_operationPendingText.substr(0, newlinePosition);
-
-            if (!line.empty() && line.back() == '\r')
+            if (c == '\n')
             {
-                line.pop_back();
+                if (!m_operationPendingText.empty() && m_operationPendingText.back() == '\r')
+                {
+                    m_operationPendingText.pop_back();
+                }
+                m_operationLines.push_back(std::move(m_operationPendingText));
+                m_operationPendingText.clear();
+                changed = true;
             }
-
-            m_operationLines.push_back(std::move(line));
-
-            m_operationPendingText.erase(0, newlinePosition + 1);
-
-            changed = true;
+            else if (c == '\r')
+            {
+                if (!m_operationPendingText.empty())
+                {
+                    if (m_operationLines.empty() ||
+                        m_operationLines.back() != m_operationPendingText)
+                    {
+                        m_operationLines.push_back(m_operationPendingText);
+                    }
+                    else
+                    {
+                        m_operationLines.back() = m_operationPendingText;
+                    }
+                    m_operationPendingText.clear();
+                    changed = true;
+                }
+            }
+            else
+            {
+                m_operationPendingText.push_back(c);
+            }
         }
-
-        changed = true;
     }
 
-    // Display an incomplete line while it is still arriving.
     std::vector<std::string> visibleLines = m_operationLines;
-
     if (!m_operationPendingText.empty())
     {
         visibleLines.push_back(m_operationPendingText);
     }
 
-    if (changed)
+    if (changed || !m_operationPendingText.empty())
     {
         std::vector<slint::SharedString> uiLines;
         uiLines.reserve(visibleLines.size());

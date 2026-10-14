@@ -106,7 +106,7 @@ private:
     std::future<std::optional<std::filesystem::path>> m_openRepositoryTask;
     std::future<RepositoryStatus> m_statusTask;
     std::future<void> m_fileOperationTask;
-    std::future<void> m_commitTask;
+    std::future<int> m_commitTask;
     std::future<std::vector<Commit>> m_historyTask;
     std::future<Diff> m_diffTask;
     std::future<std::vector<Branch>> m_branchTask;

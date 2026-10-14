@@ -33,6 +33,7 @@ public:
     void unstage(const std::filesystem::path& path) const;
 
     void commit(const std::string& message) const;
+    int commitStreaming(const std::string& message, const GitOutputCallback& outputCallback) const;
 
     Diff diff(const std::filesystem::path& path, bool staged) const;
 

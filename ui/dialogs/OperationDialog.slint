@@ -12,71 +12,80 @@ component OperationDialog inherits Rectangle {
 
     visible: root.dialog-visible;
 
-    background: #00000080;
+    background: #00000060;
 
     Rectangle {
         x: (parent.width - self.width) / 2;
         y: (parent.height - self.height) / 2;
 
-        width: 760px;
-        height: 520px;
+        width: 780px;
+        height: 540px;
 
         background: #ffffff;
         border-radius: 8px;
         border-width: 1px;
-        border-color: #c8c8c8;
+        border-color: #cbd5e1;
 
         VerticalLayout {
-            padding: 16px;
-            spacing: 12px;
+            padding: 20px;
+            spacing: 14px;
 
             HorizontalLayout {
-                height: 32px;
+                height: 36px;
                 spacing: 8px;
 
                 Text {
                     text: root.operation-title;
-                    font-size: 22px;
-                    color: #252525;
+                    font-size: 20px;
+                    font-weight: 700;
+                    color: #1e293b;
 
                     horizontal-stretch: 1;
                     vertical-alignment: center;
                 }
 
-                Text {
-                    text: root.operation-running
-                        ? "Running"
-                        : root.operation-status;
+                Rectangle {
+                    width: 90px;
+                    height: 28px;
+                    border-radius: 6px;
+                    background: root.operation-running ? #eff6ff : #f0fdf4;
+                    y: (parent.height - self.height) / 2;
 
-                    color: root.operation-running
-                        ? #1565c0
-                        : #2e7d32;
-
-                    vertical-alignment: center;
+                    Text {
+                        text: root.operation-running ? "Running" : root.operation-status;
+                        font-size: 12px;
+                        font-weight: 600;
+                        color: root.operation-running ? #2563eb : #16a34a;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
                 }
             }
 
             Text {
                 text: "Command";
                 font-size: 13px;
-                color: #707070;
+                font-weight: 600;
+                color: #475569;
             }
 
             Rectangle {
-                height: 36px;
-                background: #f1f3f5;
-                border-radius: 4px;
+                height: 40px;
+                background: #f8fafc;
+                border-radius: 6px;
+                border-width: 1px;
+                border-color: #e2e8f0;
 
                 Text {
-                    x: 10px;
+                    x: 12px;
                     y: 0px;
-                    width: parent.width - 20px;
+                    width: parent.width - 24px;
                     height: parent.height;
 
                     text: "$ " + root.operation-command;
                     font-family: "Consolas";
                     font-size: 13px;
-                    color: #252525;
+                    color: #334155;
 
                     vertical-alignment: center;
                     overflow: elide;
@@ -84,37 +93,38 @@ component OperationDialog inherits Rectangle {
             }
 
             Text {
-                text: "Output";
+                text: "Output Log";
                 font-size: 13px;
-                color: #707070;
+                font-weight: 600;
+                color: #475569;
             }
 
             Rectangle {
                 vertical-stretch: 1;
-
-                background: #17191d;
-                border-radius: 4px;
+                background: #0f172a;
+                border-radius: 6px;
+                border-width: 1px;
+                border-color: #1e293b;
 
                 ListView {
                     width: parent.width;
                     height: parent.height;
 
                     for line in root.operation-log-lines: Rectangle {
-                        height: 20px;
+                        height: 22px;
                         width: parent.width;
-
                         background: transparent;
 
                         Text {
-                            x: 8px;
+                            x: 12px;
                             y: 0px;
-                            width: parent.width - 16px;
+                            width: parent.width - 24px;
                             height: parent.height;
 
                             text: line;
                             font-family: "Consolas";
                             font-size: 12px;
-                            color: #d5d9df;
+                            color: #e2e8f0;
 
                             vertical-alignment: center;
                             overflow: elide;
@@ -129,7 +139,8 @@ component OperationDialog inherits Rectangle {
 
                 Text {
                     text: root.operation-status;
-                    color: #707070;
+                    color: #64748b;
+                    font-size: 13px;
 
                     horizontal-stretch: 1;
                     vertical-alignment: center;
