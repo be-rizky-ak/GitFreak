@@ -1,8 +1,13 @@
 export component CommitGraphRow inherits Rectangle {
     in property <int> lane: 0;
+    in property <bool> is-active: true;
+    in property <bool> has-upper-line: true;
 
     in property <[int]> parent-lanes: [];
+    in property <[bool]> parent-lanes-active: [];
+
     in property <[int]> active-lanes: [];
+    in property <[bool]> active-lanes-active: [];
 
     in property <int> max-lane: 0;
 
@@ -13,7 +18,10 @@ export component CommitGraphRow inherits Rectangle {
     width: Math.max(120px, (root.graph-left + (root.max-lane + 1) * root.lane-spacing + 16) * 1px);
     background: transparent;
 
-    pure function get-lane-color(lane-idx: int) -> color {
+    pure function get-lane-color(lane-idx: int, active: bool) -> color {
+        if (!active) {
+            return #94a3b8; // Gray for inactive/unmerged branch lines
+        }
         if (lane-idx == 0) { return #2563eb; } // Blue
         if (lane-idx == 1) { return #16a34a; } // Green
         if (lane-idx == 2) { return #d97706; } // Amber
@@ -40,21 +48,21 @@ export component CommitGraphRow inherits Rectangle {
     // =================================================
 
     Rectangle {
-        visible: root.lane >= 0;
+        visible: root.lane >= 0 && root.has-upper-line;
 
         width: 2px;
         x: root.current-x - 1px;
         y: 0px;
-        height: root.height / 2;
+        height: root.height / 2 + 1px;
 
-        background: root.get-lane-color(root.lane);
+        background: root.get-lane-color(root.lane, root.is-active);
     }
 
     // =================================================
     // ACTIVE BRANCH LANES
     // =================================================
 
-    for active-lane in root.active-lanes: Rectangle {
+    for active-lane[i] in root.active-lanes: Rectangle {
         visible: active-lane != root.lane;
 
         width: 2px;
@@ -62,7 +70,7 @@ export component CommitGraphRow inherits Rectangle {
         y: 0px;
         height: root.height;
 
-        background: root.get-lane-color(active-lane);
+        background: root.get-lane-color(active-lane, root.active-lanes-active[i]);
     }
 
     // =================================================
@@ -70,31 +78,31 @@ export component CommitGraphRow inherits Rectangle {
     // =================================================
 
     // Case 1: First/main parent in same lane (straight down)
-    for p-lane in root.parent-lanes: Rectangle {
+    for p-lane[i] in root.parent-lanes: Rectangle {
         visible: p-lane == root.lane;
 
         width: 2px;
         x: root.current-x - 1px;
-        y: root.height / 2;
-        height: root.height / 2 + 1px;
+        y: root.height / 2 - 1px;
+        height: root.height / 2 + 2px;
 
-        background: root.get-lane-color(root.lane);
+        background: root.get-lane-color(root.lane, root.parent-lanes-active[i]);
     }
 
     // Case 2: Parent in different lane (vertical stem down)
-    for p-lane in root.parent-lanes: Rectangle {
+    for p-lane[i] in root.parent-lanes: Rectangle {
         visible: p-lane != root.lane;
 
         width: 2px;
         x: root.current-x - 1px;
-        y: root.height / 2;
-        height: root.height / 4;
+        y: root.height / 2 - 1px;
+        height: root.height / 4 + 2px;
 
-        background: root.get-lane-color(root.lane);
+        background: root.get-lane-color(root.lane, root.parent-lanes-active[i]);
     }
 
     // Case 2: Parent in different lane (horizontal bridge)
-    for p-lane in root.parent-lanes: Rectangle {
+    for p-lane[i] in root.parent-lanes: Rectangle {
         property <length> parent-x: (root.graph-left + p-lane * root.lane-spacing) * 1px;
 
         visible: p-lane != root.lane;
@@ -109,23 +117,23 @@ export component CommitGraphRow inherits Rectangle {
             ? parent-x - 1px
             : root.current-x - 1px;
 
-        y: root.height * 3 / 4;
+        y: root.height * 3 / 4 - 1px;
 
-        background: root.get-lane-color(p-lane);
+        background: root.get-lane-color(p-lane, root.parent-lanes-active[i]);
     }
 
     // Case 2: Parent in different lane (vertical segment down in parent lane)
-    for p-lane in root.parent-lanes: Rectangle {
+    for p-lane[i] in root.parent-lanes: Rectangle {
         property <length> parent-x: (root.graph-left + p-lane * root.lane-spacing) * 1px;
 
         visible: p-lane != root.lane;
 
         width: 2px;
         x: parent-x - 1px;
-        y: root.height * 3 / 4;
-        height: root.height / 4 + 1px;
+        y: root.height * 3 / 4 - 1px;
+        height: root.height / 4 + 2px;
 
-        background: root.get-lane-color(p-lane);
+        background: root.get-lane-color(p-lane, root.parent-lanes-active[i]);
     }
 
     // =================================================
@@ -141,7 +149,7 @@ export component CommitGraphRow inherits Rectangle {
         y: (root.height - self.height) / 2;
         border-radius: 5px;
 
-        background: root.get-lane-color(root.lane);
+        background: root.get-lane-color(root.lane, root.is-active);
         border-width: 2px;
         border-color: #ffffff;
     }

@@ -2,9 +2,12 @@
 
 #include <algorithm>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
-std::vector<CommitGraphNode> CommitGraph::build(const std::vector<Commit>& commits)
+std::vector<CommitGraphNode> CommitGraph::build(
+    const std::vector<Commit>& commits, const std::string& activeHeadHash)
 {
     std::vector<CommitGraphNode> result;
 
@@ -15,8 +18,49 @@ std::vector<CommitGraphNode> CommitGraph::build(const std::vector<Commit>& commi
         return result;
     }
 
-    // Each lane contains the commit hash
-    // expected to appear next in that lane.
+    // Map commit hash to Commit pointer for fast lookup
+    std::unordered_map<std::string, const Commit*> commitMap;
+    commitMap.reserve(commits.size());
+    for (const Commit& commit : commits)
+    {
+        commitMap[commit.hash] = &commit;
+    }
+
+    // Determine starting active commit hash (active branch tip / HEAD)
+    std::string startHash = activeHeadHash;
+    if (startHash.empty() || commitMap.find(startHash) == commitMap.end())
+    {
+        startHash = commits[0].hash;
+    }
+
+    // Traverse ancestors from active HEAD to find all commits merged into active branch
+    std::unordered_set<std::string> activeCommits;
+    if (commitMap.find(startHash) != commitMap.end())
+    {
+        std::vector<std::string> queue = {startHash};
+        activeCommits.insert(startHash);
+
+        while (!queue.empty())
+        {
+            std::string currentHash = queue.back();
+            queue.pop_back();
+
+            auto it = commitMap.find(currentHash);
+            if (it != commitMap.end())
+            {
+                for (const std::string& parentHash : it->second->parents)
+                {
+                    if (!parentHash.empty() && activeCommits.find(parentHash) == activeCommits.end())
+                    {
+                        activeCommits.insert(parentHash);
+                        queue.push_back(parentHash);
+                    }
+                }
+            }
+        }
+    }
+
+    // Each lane contains the commit hash expected to appear next in that lane.
     std::vector<std::string> lanes;
 
     auto findLane = [&lanes](const std::string& hash) -> int
@@ -54,14 +98,18 @@ std::vector<CommitGraphNode> CommitGraph::build(const std::vector<Commit>& commi
         CommitGraphNode node;
 
         node.commit = commit;
+        node.isActive = (activeCommits.find(commit.hash) != activeCommits.end());
 
         // Find the lane where this commit is expected.
         int currentLane = findLane(commit.hash);
 
-        // If this commit isn't currently expected
-        // by any lane, create a new lane.
-        if (currentLane < 0)
+        if (currentLane >= 0)
         {
+            node.hasUpperLine = true;
+        }
+        else
+        {
+            node.hasUpperLine = false;
             currentLane = createLane(commit.hash);
         }
 
@@ -86,16 +134,13 @@ std::vector<CommitGraphNode> CommitGraph::build(const std::vector<Commit>& commi
             {
                 if (parentIndex == 0)
                 {
-                    // First parent continues on the
-                    // current lane.
+                    // First parent continues on the current lane.
                     parentLane = currentLane;
-
                     lanes[parentLane] = parent;
                 }
                 else
                 {
-                    // Additional parents create
-                    // additional lanes.
+                    // Additional parents create additional lanes.
                     parentLane = createLane(parent);
                 }
             }
@@ -104,6 +149,8 @@ std::vector<CommitGraphNode> CommitGraph::build(const std::vector<Commit>& commi
                 node.parentLanes.end())
             {
                 node.parentLanes.push_back(parentLane);
+                bool parentIsActive = (activeCommits.find(parent) != activeCommits.end());
+                node.parentLanesActive.push_back(parentIsActive);
             }
         }
 
@@ -113,9 +160,11 @@ std::vector<CommitGraphNode> CommitGraph::build(const std::vector<Commit>& commi
 
         for (int lane = 0; lane < static_cast<int>(lanes.size()); ++lane)
         {
-            if (!lanes[lane].empty())
+            if (!lanes[lane].empty() && lane != node.lane)
             {
                 node.activeLanes.push_back(lane);
+                bool laneIsActive = (activeCommits.find(lanes[lane]) != activeCommits.end());
+                node.activeLanesActive.push_back(laneIsActive);
             }
         }
 

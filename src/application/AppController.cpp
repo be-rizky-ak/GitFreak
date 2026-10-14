@@ -1474,44 +1474,72 @@ void AppController::pollClone()
 
 void AppController::updateHistoryGraph(const std::vector<Commit>& commits)
 {
-    std::vector<CommitGraphNode> graph = CommitGraph::build(commits);
+    std::vector<CommitGraphNode> graph = CommitGraph::build(commits, m_repositoryStatus.head);
 
     std::vector<int> lanes;
+    std::vector<bool> isActiveModel;
+    std::vector<bool> hasUpperLineModel;
+
     lanes.reserve(graph.size());
+    isActiveModel.reserve(graph.size());
+    hasUpperLineModel.reserve(graph.size());
 
     auto parentLanesModel =
         std::make_shared<slint::VectorModel<std::shared_ptr<slint::Model<int>>>>();
+    auto parentLanesActiveModel =
+        std::make_shared<slint::VectorModel<std::shared_ptr<slint::Model<bool>>>>();
 
     auto activeLanesModel =
         std::make_shared<slint::VectorModel<std::shared_ptr<slint::Model<int>>>>();
+    auto activeLanesActiveModel =
+        std::make_shared<slint::VectorModel<std::shared_ptr<slint::Model<bool>>>>();
 
     int maxLane = 0;
 
     for (const CommitGraphNode& node : graph)
     {
         lanes.push_back(node.lane);
+        isActiveModel.push_back(node.isActive);
+        hasUpperLineModel.push_back(node.hasUpperLine);
         maxLane = std::max(maxLane, node.lane);
 
         auto rowParents = std::make_shared<slint::VectorModel<int>>();
-        for (int parentLane : node.parentLanes)
+        auto rowParentsActive = std::make_shared<slint::VectorModel<bool>>();
+        for (std::size_t i = 0; i < node.parentLanes.size(); ++i)
         {
+            int parentLane = node.parentLanes[i];
             rowParents->push_back(parentLane);
+            rowParentsActive->push_back(node.parentLanesActive[i]);
             maxLane = std::max(maxLane, parentLane);
         }
         parentLanesModel->push_back(rowParents);
+        parentLanesActiveModel->push_back(rowParentsActive);
 
         auto rowActives = std::make_shared<slint::VectorModel<int>>();
-        for (int activeLane : node.activeLanes)
+        auto rowActivesActive = std::make_shared<slint::VectorModel<bool>>();
+        for (std::size_t i = 0; i < node.activeLanes.size(); ++i)
         {
+            int activeLane = node.activeLanes[i];
             rowActives->push_back(activeLane);
+            rowActivesActive->push_back(node.activeLanesActive[i]);
             maxLane = std::max(maxLane, activeLane);
         }
         activeLanesModel->push_back(rowActives);
+        activeLanesActiveModel->push_back(rowActivesActive);
     }
 
     m_window->set_history_lanes(std::make_shared<slint::VectorModel<int>>(std::move(lanes)));
+    m_window->set_history_is_active(
+        std::make_shared<slint::VectorModel<bool>>(std::move(isActiveModel)));
+    m_window->set_history_has_upper_line(
+        std::make_shared<slint::VectorModel<bool>>(std::move(hasUpperLineModel)));
+
     m_window->set_history_parent_lanes(parentLanesModel);
+    m_window->set_history_parent_lanes_active(parentLanesActiveModel);
+
     m_window->set_history_active_lanes(activeLanesModel);
+    m_window->set_history_active_lanes_active(activeLanesActiveModel);
+
     m_window->set_history_max_lane(maxLane);
 }
 
