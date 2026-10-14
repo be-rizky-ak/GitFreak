@@ -21,6 +21,8 @@ add_executable(GitFreak
     src/application/RepositoryManager.cpp
     src/application/RepositoryManager.h
 
+    src/cache/RepositoryCache.h
+
     src/git/GitHistoryParser.cpp
     src/git/GitHistoryParser.h
     src/git/GitProcess.cpp

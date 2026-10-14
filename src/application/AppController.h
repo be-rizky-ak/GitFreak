@@ -4,6 +4,7 @@
 
 #include "RepositoryManager.h"
 
+#include "../cache/RepositoryCache.h"
 #include "../models/Branch.h"
 #include "../models/Commit.h"
 #include "../models/CommitGraph.h"
@@ -131,6 +132,10 @@ private:
     std::filesystem::path m_cloneDestination;
 
     RepositoryManager m_repositoryManager;
+
+    GitFreakCache::RepositoryCache m_repositoryCache{10};
+    GitFreakCache::StatusCache m_statusCache;
+    GitFreakCache::CommitCache m_commitCache;
 
     bool m_gitOperationRunning = false;
 };

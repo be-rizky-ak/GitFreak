@@ -287,6 +287,13 @@ void AppController::pollRepositoryOpen()
 
         m_repository = std::make_unique<GitRepository>(*root);
 
+        const auto evicted = m_repositoryCache.touch(*root);
+        if (evicted)
+        {
+            m_statusCache.invalidate(*evicted);
+            m_commitCache.invalidate(*evicted);
+        }
+
         m_repositoryManager.add(*root);
         refreshRepositoryList();
 
@@ -325,6 +332,12 @@ void AppController::pollStatus()
     try
     {
         RepositoryStatus status = m_statusTask.get();
+        if (m_repository)
+        {
+            const auto path = m_repository->workingDirectory();
+            m_repositoryCache.touch(path);
+            m_statusCache.put(path, status);
+        }
 
         std::vector<ChangedFile> orderedFiles;
 
@@ -541,6 +554,10 @@ void AppController::pollFileOperation()
         m_fileOperationTask.get();
 
         m_window->set_status_text("Refreshing working tree...");
+        if (m_repository)
+        {
+            m_statusCache.invalidate(m_repository->workingDirectory());
+        }
 
         startStatusRefresh();
     }
@@ -642,6 +659,12 @@ void AppController::pollCommit()
         m_commitTask.get();
 
         m_window->set_status_text("Commit created.");
+        if (m_repository)
+        {
+            const auto path = m_repository->workingDirectory();
+            m_statusCache.invalidate(path);
+            m_commitCache.invalidate(path);
+        }
 
         startStatusRefresh();
     }
@@ -660,10 +683,43 @@ void AppController::startHistoryRefresh()
 
     const std::filesystem::path repositoryPath = m_repository->workingDirectory();
 
+    constexpr int historyLimit = Config::MaxHistoryLimit;
+
+    if (auto cached = m_commitCache.get(repositoryPath, historyLimit))
+    {
+        updateHistoryGraph(*cached);
+
+        std::vector<slint::SharedString> commitHashes;
+        std::vector<slint::SharedString> commitDetails;
+
+        commitHashes.reserve(cached->size());
+        commitDetails.reserve(cached->size());
+
+        for (const Commit& commit : *cached)
+        {
+            const std::string shortHash =
+                commit.hash.substr(0, std::min<std::size_t>(7, commit.hash.size()));
+
+            commitHashes.emplace_back(shortHash);
+            commitDetails.emplace_back(
+                commit.subject + "  —  " + commit.author + "  " + commit.date);
+        }
+
+        m_window->set_history_commits(
+            std::make_shared<slint::VectorModel<slint::SharedString>>(std::move(commitHashes)));
+
+        m_window->set_history_details(
+            std::make_shared<slint::VectorModel<slint::SharedString>>(std::move(commitDetails)));
+
+        m_window->set_history_count(static_cast<int>(cached->size()));
+
+        startBranchRefresh();
+        return;
+    }
+
     m_historyTask = m_scheduler.submit([repositoryPath]()
     {
         GitRepository repository(repositoryPath);
-
         return repository.history(Config::MaxHistoryLimit);
     });
 
@@ -691,6 +747,12 @@ void AppController::pollHistory()
     try
     {
         std::vector<Commit> commits = m_historyTask.get();
+        if (m_repository)
+        {
+            const auto path = m_repository->workingDirectory();
+            m_repositoryCache.touch(path);
+            m_commitCache.put(path, Config::MaxHistoryLimit, commits);
+        }
 
         updateHistoryGraph(commits);
 
@@ -999,6 +1061,12 @@ void AppController::pollCheckout()
         m_window->set_diff_lines(std::make_shared<slint::VectorModel<slint::SharedString>>());
 
         m_window->set_diff_line_types(std::make_shared<slint::VectorModel<int>>());
+        if (m_repository)
+        {
+            const auto path = m_repository->workingDirectory();
+            m_statusCache.invalidate(path);
+            m_commitCache.invalidate(path);
+        }
 
         startStatusRefresh();
     }
@@ -1078,6 +1146,12 @@ void AppController::pollFetch()
         if (exitCode == 0)
         {
             finishOperation(true, 0);
+            if (m_repository)
+            {
+                const auto path = m_repository->workingDirectory();
+                m_statusCache.invalidate(path);
+                m_commitCache.invalidate(path);
+            }
 
             startStatusRefresh();
         }
@@ -1167,6 +1241,12 @@ void AppController::pollPull()
             m_window->set_diff_lines(std::make_shared<slint::VectorModel<slint::SharedString>>());
 
             m_window->set_diff_line_types(std::make_shared<slint::VectorModel<int>>());
+            if (m_repository)
+            {
+                const auto path = m_repository->workingDirectory();
+                m_statusCache.invalidate(path);
+                m_commitCache.invalidate(path);
+            }
 
             startStatusRefresh();
         }
@@ -1252,6 +1332,12 @@ void AppController::pollPush()
         if (exitCode == 0)
         {
             finishOperation(true, 0);
+
+            if (m_repository)
+            {
+                const auto path = m_repository->workingDirectory();
+                m_statusCache.invalidate(path);
+            }
 
             startStatusRefresh();
         }
@@ -1341,7 +1427,13 @@ void AppController::pollClone()
 
             startFileWatcher();
             // Continue using the existing
-            // repository refresh pipeline.
+            // repository refresh pipeline
+            if (m_repository)
+            {
+                const auto path = m_repository->workingDirectory();
+                m_statusCache.invalidate(path);
+                m_commitCache.invalidate(path);
+            }
             startStatusRefresh();
         }
         else
