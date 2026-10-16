@@ -1,5 +1,6 @@
 #include "NativeDialogs.h"
 
+#if defined(_WIN32)
 #include <shobjidl.h>
 #include <windows.h>
 
@@ -100,3 +101,9 @@ std::optional<std::filesystem::path> NativeDialogs::pickFolder()
 
     return selectedPath;
 }
+#else
+std::optional<std::filesystem::path> NativeDialogs::pickFolder()
+{
+    return std::nullopt;
+}
+#endif

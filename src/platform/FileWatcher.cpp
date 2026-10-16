@@ -1,13 +1,14 @@
 #include "FileWatcher.h"
 
-#define NOMINMAX
-#include <Windows.h>
-
 #include <atomic>
 #include <stdexcept>
 #include <string>
 #include <thread>
 #include <vector>
+
+#if defined(_WIN32)
+#define NOMINMAX
+#include <Windows.h>
 
 namespace
 {
@@ -236,3 +237,17 @@ void FileWatcher::stop()
 
     m_impl->callback = nullptr;
 }
+
+#else
+
+struct FileWatcher::Impl
+{
+    std::atomic<bool> running = false;
+};
+
+FileWatcher::FileWatcher() : m_impl(std::make_unique<Impl>()) {}
+FileWatcher::~FileWatcher() { stop(); }
+void FileWatcher::start(const std::filesystem::path& directory, Callback callback) {}
+void FileWatcher::stop() {}
+
+#endif

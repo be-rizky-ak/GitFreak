@@ -63,8 +63,10 @@ target_link_libraries(GitFreak
     PRIVATE Slint::Slint
 )
 
+if(WIN32)
 add_custom_command(TARGET GitFreak POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "C:/Program Files/Slint-cpp 1.18.1/lib/slint_cpp.dll"
         "$<TARGET_FILE_DIR:GitFreak>"
 )
+endif()
