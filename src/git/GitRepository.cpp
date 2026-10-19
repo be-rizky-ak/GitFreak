@@ -126,7 +126,7 @@ std::vector<Commit> GitRepository::history(int limit) const
     const std::string format = "--pretty=format:%H%x00%P%x00%an%x00%ae%x00%ad%x00%s%x00";
 
     const std::array<std::string, 5> arguments = {
-        "log", "HEAD", limitArgument, "--date=iso-strict", format};
+        "log", "--all", limitArgument, "--date=iso-strict", format};
 
     GitCommandResult result = m_gitProcess.execute(m_workingDirectory, arguments);
 
@@ -297,7 +297,7 @@ std::vector<Remote> GitRepository::remotes() const
 
 int GitRepository::fetchStreaming(const GitOutputCallback& outputCallback) const
 {
-    const std::array<std::string, 1> arguments = {"fetch"};
+    const std::array<std::string, 2> arguments = {"fetch", "--all"};
 
     return m_gitProcess.executeStreaming(m_workingDirectory, arguments, outputCallback);
 }
