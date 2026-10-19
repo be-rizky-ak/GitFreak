@@ -314,6 +314,9 @@ void AppController::pollRepositoryOpen()
         m_repository.reset();
 
         m_window->set_changed_files({});
+        m_window->set_changed_files_staged({});
+        m_window->set_changed_files_unstaged({});
+        m_window->set_staged_file_count(0);
         m_window->set_status_text(
             slint::SharedString(std::string("Failed to open repository: ") + e.what()));
     }
@@ -488,6 +491,9 @@ void AppController::pollStatus()
     catch (const std::exception& e)
     {
         m_window->set_changed_files({});
+        m_window->set_changed_files_staged({});
+        m_window->set_changed_files_unstaged({});
+        m_window->set_staged_file_count(0);
 
         m_window->set_status_text(
             slint::SharedString(std::string("Failed to load status: ") + e.what()));
@@ -581,6 +587,10 @@ void AppController::pollFileOperation()
     }
     catch (const std::exception& e)
     {
+        m_window->set_changed_files({});
+        m_window->set_changed_files_staged({});
+        m_window->set_changed_files_unstaged({});
+        m_window->set_staged_file_count(0);
         m_window->set_status_text(
             slint::SharedString(std::string("Git operation failed: ") + e.what()));
     }
@@ -707,6 +717,11 @@ void AppController::pollCommit()
         appendOperationLog(true, e.what());
 
         finishOperation(false, 1);
+
+        m_window->set_changed_files({});
+        m_window->set_changed_files_staged({});
+        m_window->set_changed_files_unstaged({});
+        m_window->set_staged_file_count(0);
 
         m_window->set_status_text(slint::SharedString(std::string("Commit failed: ") + e.what()));
     }
@@ -840,6 +855,10 @@ void AppController::pollHistory()
     }
     catch (const std::exception& e)
     {
+        m_window->set_changed_files({});
+        m_window->set_changed_files_staged({});
+        m_window->set_changed_files_unstaged({});
+        m_window->set_staged_file_count(0);
         m_window->set_status_text(
             slint::SharedString(std::string("Failed to load history: ") + e.what()));
     }
@@ -934,6 +953,11 @@ void AppController::pollDiff()
 
         errorTypes.push_back(2);
 
+        m_window->set_changed_files({});
+        m_window->set_changed_files_staged({});
+        m_window->set_changed_files_unstaged({});
+        m_window->set_staged_file_count(0);
+
         m_window->set_diff_lines(
             std::make_shared<slint::VectorModel<slint::SharedString>>(std::move(errorLines)));
 
@@ -1015,6 +1039,10 @@ void AppController::pollBranches()
     }
     catch (const std::exception& e)
     {
+        m_window->set_changed_files({});
+        m_window->set_changed_files_staged({});
+        m_window->set_changed_files_unstaged({});
+        m_window->set_staged_file_count(0);
         m_window->set_status_text(
             slint::SharedString(std::string("Failed to load branches: ") + e.what()));
     }
@@ -1129,6 +1157,11 @@ void AppController::pollCheckout()
 
         finishOperation(false, 1);
 
+        m_window->set_changed_files({});
+        m_window->set_changed_files_staged({});
+        m_window->set_changed_files_unstaged({});
+        m_window->set_staged_file_count(0);
+
         m_window->set_status_text(
             slint::SharedString(std::string("Failed to switch branch: ") + e.what()));
     }
@@ -1220,6 +1253,11 @@ void AppController::pollFetch()
         appendOperationLog(true, e.what());
 
         finishOperation(false, 1);
+
+        m_window->set_changed_files({});
+        m_window->set_changed_files_staged({});
+        m_window->set_changed_files_unstaged({});
+        m_window->set_staged_file_count(0);
 
         m_window->set_status_text(slint::SharedString(std::string("Failed to fetch: ") + e.what()));
     }
@@ -1316,6 +1354,11 @@ void AppController::pollPull()
 
         finishOperation(false, 1);
 
+        m_window->set_changed_files({});
+        m_window->set_changed_files_staged({});
+        m_window->set_changed_files_unstaged({});
+        m_window->set_staged_file_count(0);
+
         m_window->set_status_text(slint::SharedString(std::string("Failed to pull: ") + e.what()));
     }
 }
@@ -1406,6 +1449,11 @@ void AppController::pollPush()
         appendOperationLog(true, e.what());
 
         finishOperation(false, 1);
+
+        m_window->set_changed_files({});
+        m_window->set_changed_files_staged({});
+        m_window->set_changed_files_unstaged({});
+        m_window->set_staged_file_count(0);
 
         m_window->set_status_text(slint::SharedString(std::string("Failed to push: ") + e.what()));
     }
@@ -1501,6 +1549,11 @@ void AppController::pollClone()
         appendOperationLog(true, e.what());
 
         finishOperation(false, 1);
+
+        m_window->set_changed_files({});
+        m_window->set_changed_files_staged({});
+        m_window->set_changed_files_unstaged({});
+        m_window->set_staged_file_count(0);
 
         m_window->set_status_text(slint::SharedString(std::string("Failed to clone: ") + e.what()));
     }

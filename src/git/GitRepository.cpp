@@ -1,5 +1,6 @@
 #include "GitRepository.h"
 
+#include "GitCommandError.h"
 #include "GitHistoryParser.h"
 #include "GitRemoteParser.h"
 #include "GitStatusParser.h"
@@ -64,7 +65,7 @@ RepositoryStatus GitRepository::status() const
 
     if (result.exitCode != 0)
     {
-        throw std::runtime_error("git status failed: " + result.stderrText);
+        throw GitCommandError("git status", result.exitCode, result.stderrText);
     }
 
     return GitStatusParser::parse(result.stdoutText);
@@ -78,7 +79,7 @@ void GitRepository::stage(const std::filesystem::path& path) const
 
     if (result.exitCode != 0)
     {
-        throw std::runtime_error("git add failed: " + result.stderrText);
+        throw GitCommandError("git add", result.exitCode, result.stderrText);
     }
 }
 
@@ -90,7 +91,7 @@ void GitRepository::unstage(const std::filesystem::path& path) const
 
     if (result.exitCode != 0)
     {
-        throw std::runtime_error("git restore --staged failed: " + result.stderrText);
+        throw GitCommandError("git restore --staged", result.exitCode, result.stderrText);
     }
 }
 
@@ -102,7 +103,7 @@ void GitRepository::commit(const std::string& message) const
 
     if (result.exitCode != 0)
     {
-        throw std::runtime_error("git commit failed: " + result.stderrText);
+        throw GitCommandError("git commit", result.exitCode, result.stderrText);
     }
 }
 
@@ -132,7 +133,7 @@ std::vector<Commit> GitRepository::history(int limit) const
 
     if (result.exitCode != 0)
     {
-        throw std::runtime_error("git log failed: " + result.stderrText);
+        throw GitCommandError("git log", result.exitCode, result.stderrText);
     }
 
     return GitHistoryParser::parse(result.stdoutText);
@@ -156,7 +157,7 @@ Diff GitRepository::diff(const std::filesystem::path& path, bool staged) const
 
     if (result.exitCode != 0)
     {
-        throw std::runtime_error("git diff failed: " + result.stderrText);
+        throw GitCommandError("git diff", result.exitCode, result.stderrText);
     }
 
     Diff diff;
@@ -175,7 +176,7 @@ std::vector<Branch> GitRepository::branches() const
 
     if (result.exitCode != 0)
     {
-        throw std::runtime_error("git for-each-ref failed: " + result.stderrText);
+        throw GitCommandError("git for-each-ref", result.exitCode, result.stderrText);
     }
 
     std::string currentBranch;
@@ -187,7 +188,7 @@ std::vector<Branch> GitRepository::branches() const
 
         if (currentResult.exitCode != 0)
         {
-            throw std::runtime_error("git branch failed: " + currentResult.stderrText);
+            throw GitCommandError("git branch", result.exitCode, result.stderrText);
         }
 
         currentBranch = currentResult.stdoutText;
@@ -264,7 +265,7 @@ void GitRepository::checkout(const std::string& branchName) const
 
     if (result.exitCode != 0)
     {
-        throw std::runtime_error("git switch failed: " + result.stderrText);
+        throw GitCommandError("git switch", result.exitCode, result.stderrText);
     }
 }
 
@@ -289,7 +290,7 @@ std::vector<Remote> GitRepository::remotes() const
 
     if (result.exitCode != 0)
     {
-        throw std::runtime_error("git remote failed: " + result.stderrText);
+        throw GitCommandError("git remote", result.exitCode, result.stderrText);
     }
 
     return GitRemoteParser::parse(result.stdoutText);
