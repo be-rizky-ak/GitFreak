@@ -157,6 +157,9 @@ void AppController::openRepositoryPath(const std::filesystem::path& path)
     if (path.empty())
         return;
 
+    ++m_statusRequestId;
+    ++m_historyRequestId;
+
     stopFileWatcher();
 
     m_repositoryTimer.stop();
@@ -249,6 +252,8 @@ void AppController::removeRepository(int index)
     const auto path = repositories[index].path;
 
     m_repositoryManager.remove(path);
+    m_statusCache.invalidate(path);
+    m_commitCache.invalidate(path);
 
     refreshRepositoryList();
 }
@@ -332,11 +337,24 @@ void AppController::pollStatus()
     try
     {
         RepositoryStatus status = m_statusTask.get();
+        if (!m_repository || m_statusTaskRequestId != m_statusRequestId ||
+            GitFreakCache::repositoryKey(m_statusTaskPath) !=
+                GitFreakCache::repositoryKey(m_repository->workingDirectory()))
+        {
+            return;
+        }
+
         if (m_repository)
         {
             const auto path = m_repository->workingDirectory();
-            m_repositoryCache.touch(path);
-            m_statusCache.put(path, status);
+            const auto evicted = m_repositoryCache.touch(m_statusTaskPath);
+            if (evicted)
+            {
+                m_statusCache.invalidate(*evicted);
+                m_commitCache.invalidate(*evicted);
+            }
+
+            m_statusCache.put(m_statusTaskPath, status);
         }
 
         std::vector<ChangedFile> orderedFiles;
@@ -571,21 +589,22 @@ void AppController::pollFileOperation()
 void AppController::startStatusRefresh()
 {
     if (!m_repository)
-    {
         return;
-    }
 
     const std::filesystem::path repositoryPath = m_repository->workingDirectory();
 
-    m_statusTask = m_scheduler.submit([repositoryPath]()
+    m_statusTaskPath = repositoryPath;
+    m_statusTaskRequestId = ++m_statusRequestId;
+
+    const auto requestId = m_statusTaskRequestId;
+
+    m_statusTask = m_scheduler.submit([repositoryPath, requestId]()
     {
         GitRepository repository(repositoryPath);
-
         return repository.status();
     });
 
     m_repositoryTimer.stop();
-
     m_repositoryTimer.start(
         slint::TimerMode::Repeated, std::chrono::milliseconds(50), [this]() { pollStatus(); });
 }
@@ -736,6 +755,9 @@ void AppController::startHistoryRefresh()
         return;
     }
 
+    m_historyTaskPath = repositoryPath;
+    m_historyTaskRequestId = ++m_historyRequestId;
+
     m_historyTask = m_scheduler.submit([repositoryPath]()
     {
         GitRepository repository(repositoryPath);
@@ -743,7 +765,6 @@ void AppController::startHistoryRefresh()
     });
 
     m_repositoryTimer.stop();
-
     m_repositoryTimer.start(
         slint::TimerMode::Repeated, std::chrono::milliseconds(50), [this]() { pollHistory(); });
 }
@@ -766,11 +787,24 @@ void AppController::pollHistory()
     try
     {
         std::vector<Commit> commits = m_historyTask.get();
+        if (!m_repository || m_historyTaskRequestId != m_historyRequestId ||
+            GitFreakCache::repositoryKey(m_historyTaskPath) !=
+                GitFreakCache::repositoryKey(m_repository->workingDirectory()))
+        {
+            return;
+        }
+
         if (m_repository)
         {
             const auto path = m_repository->workingDirectory();
-            m_repositoryCache.touch(path);
-            m_commitCache.put(path, Config::MaxHistoryLimit, commits);
+            const auto evicted = m_repositoryCache.touch(m_historyTaskPath);
+            if (evicted)
+            {
+                m_statusCache.invalidate(*evicted);
+                m_commitCache.invalidate(*evicted);
+            }
+
+            m_commitCache.put(m_historyTaskPath, Config::MaxHistoryLimit, commits);
         }
 
         updateHistoryGraph(commits);

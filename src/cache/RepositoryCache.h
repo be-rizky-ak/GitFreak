@@ -86,6 +86,7 @@ namespace GitFreakCache
     {
     public:
         static constexpr std::size_t MaxCommitsPerRepository = 1000;
+        static constexpr std::size_t MaxEntries = Config::MaxRepositoryCache;
 
         void put(const std::filesystem::path& path, int limit, std::vector<Commit> commits)
         {
@@ -96,7 +97,16 @@ namespace GitFreakCache
                 commits.resize(MaxCommitsPerRepository);
 
             const std::string key = makeKey(path, limit);
+
             m_entries.insert_or_assign(key, std::move(commits));
+            m_recent.remove(key);
+            m_recent.push_front(key);
+
+            while (m_recent.size() > std::max<std::size_t>(1, MaxEntries))
+            {
+                m_entries.erase(m_recent.back());
+                m_recent.pop_back();
+            }
         }
 
         std::optional<std::vector<Commit>> get(const std::filesystem::path& path, int limit) const
@@ -119,9 +129,21 @@ namespace GitFreakCache
                 else
                     ++it;
             }
+
+            for (auto it = m_recent.begin(); it != m_recent.end();)
+            {
+                if (it->rfind(prefix, 0) == 0)
+                    it = m_recent.erase(it);
+                else
+                    ++it;
+            }
         }
 
-        void clear() { m_entries.clear(); }
+        void clear()
+        {
+            m_entries.clear();
+            m_recent.clear();
+        }
 
     private:
         static std::string makeKey(const std::filesystem::path& path, int limit)
@@ -130,5 +152,6 @@ namespace GitFreakCache
         }
 
         std::unordered_map<std::string, std::vector<Commit>> m_entries;
+        std::list<std::string> m_recent;
     };
 } // namespace GitFreakCache

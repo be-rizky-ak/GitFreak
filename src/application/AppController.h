@@ -14,6 +14,7 @@
 #include "../models/RepositoryStatus.h"
 #include "../platform/FileWatcher.h"
 
+#include <cstdint>
 #include <filesystem>
 #include <future>
 #include <memory>
@@ -136,6 +137,15 @@ private:
     GitFreakCache::RepositoryCache m_repositoryCache{10};
     GitFreakCache::StatusCache m_statusCache;
     GitFreakCache::CommitCache m_commitCache;
+
+    std::filesystem::path m_statusTaskPath;
+    std::filesystem::path m_historyTaskPath;
+
+    std::uint64_t m_statusRequestId = 0;
+    std::uint64_t m_statusTaskRequestId = 0;
+
+    std::uint64_t m_historyRequestId = 0;
+    std::uint64_t m_historyTaskRequestId = 0;
 
     bool m_gitOperationRunning = false;
 };
